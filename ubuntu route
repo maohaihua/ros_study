@@ -1,0 +1,209 @@
+https://blog.csdn.net/u012841092/article/details/86679946
+
+http://www.ubuntugeek.com/howto-add-permanent-static-routes-in-ubuntu.html
+
+服务器配置需求如下：
+
+测试地址（IP）：88.17.1.146
+
+外网地址（IP）:61.184.138.35
+外网掩码：255.255.255.128
+外网网关：61.184.138.1
+
+
+内网地址（IP）:172.17.111.49
+内网掩码：255.255.255.192
+内网网关：172.17.111.62
+
+我们将其中一块网卡（比如外网网卡 enp6s0）设置成外网网卡，另外一块网卡enp7s0设置内网网卡。
+一、输入命令：
+
+sudo vim /etc/network/interfaces
+
+ 得到的结果如下：
+
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+source /etc/network/interfaces.d/*
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+auto enp6s0  
+iface enp6s0 inet static    
+        address 61.184.138.35
+        netmask 255.255.255.128
+        network 61.184.138.0  
+        broadcast 61.184.138.127
+        gateway 61.184.138.1
+        # dns-* options are implemented by the resolvconf package, if installed
+        dns-nameservers 61.184.138.1
+auto enauto enp7s0
+iface enp7s0 inet static
+        address 172.17.111.49
+        netmask 255.255.255.192
+重启网络：
+
+sudo /etc/init.d/networking restart
+
+此时网卡会报错，不用管报错信息。
+二、增加2个路由表分别是内网：camp、外网：outer
+
+vi /etc/iproute2/rt_tables 
+
+得到并写入如下信息
+
+三、修改路由信息
+
+sudo vim /etc/rc.local 
+
+文本信息如下：
+
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+service network-manager stop
+sudo ip route flush table camp
+sudo ip route add default via 172.17.111.62 dev enp7s0 src 172.17.111.49 table camp
+sudo ip rule add from 172.17.111.49 table camp
+sudo ip route flush table outer
+sudo ip route add default via 61.184.138.1 dev enp6s0 src 61.184.138.35 table outer
+sudo ip rule add from 61.184.138.35 table outer
+sudo route add -net 172.17.111.0/24 gw 172.17.111.62 dev enp7s0
+sudo route add -net 88.17.1.0/24 gw 172.17.111.62 dev enp7s0
+
+四、ubuntu服务器重启之后需要重新执行如下命令，才能ping通目标地址
+
+sudo route add -net 172.17.111.0/24 gw 172.17.111.62 dev enp7s0
+
+
+ 
+
+sudo route add -net 88.17.1.0/24 gw 172.17.111.62 dev enp7s0
+
+五、查看路由信息
+
+ip route
+
+ 
+
+完成测试
+--------------------- 
+作者：_Mashimaro_ 
+来源：CSDN 
+原文：https://blog.csdn.net/u012841092/article/details/86679946 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+
+Static routing is the term used to refer to the manual method used to set up routing. An administrator enters routes into the router using configuration commands. This method has the advantage of being predictable, and simple to set up. It is easy to manage in small networks but does not scale well.
+
+
+Advantages of Static Routes
+
+    Easy to configure
+
+    No routing protocol overhead
+
+Disadvantages of Static Routes
+
+    Network changes require manual reconfiguration
+
+    Network outages cannot be automatically routed around
+
+    Does not scale well in large networks.
+
+Add a Static route using "route" command
+
+    route add [-net|-host] <IP/Net> netmask <Mask> gw <Gateway IP> dev <Int>X
+
+Example
+
+route add -net 10.10.10.0 netmask 255.255.255.0 gw 192.168.1.1 dev eth0
+route add -host 10.10.1.1 netmask 255.255.255.0 gw 192.168.1.1 dev eth0
+
+This adds the route immediatly to the Kernel IP routing table. To confirm the route has been successfully, simply type the "route" command with no arguements:
+
+route
+
+Kernel IP routing table
+Destination Gateway Genmask Flags Metric Ref Use Iface
+192.168.1.254 * 255.255.255.0 U 0 0 0 eth0
+localnet * 255.255.255.0 U 0 0 0 eth0
+10.10.10.0 * 255.255.255.0 U 0 0 0 eth0
+10.10.1.1 * 255.255.255.0 U 0 0 0 eth0
+default 192.168.1.1 0.0.0.0 UG 0 0 0 eth0
+
+Use
+
+netstat -rn
+
+to print the Kernel IP Routing table.
+
+To keep the Static Route persistent or you want to add the route entries to the network script files (not using the route command) then all you need to do is to edit the file
+
+/etc/network/interfaces
+
+and the static routes in the following format:
+
+    up route add [-net|-host] <host/net>/<mask> gw <host/IP> dev <Interface>
+
+Example
+
+up route add -net 172.20.11.0/16 gw 172.20.10.254 dev eth1
+
+And the file will like the following
+
+sudo cat /etc/network/interfaces
+
+The output should show something like this
+
+sudo cat /etc/network/interfaces
+
+The output should show something like this
+
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+auto eth0 eth1
+
+iface eth0 inet static
+address 192.168.1.2
+netmask 255.255.255.0
+network 192.168.1.0
+broadcast 192.168.1.255
+gateway 192.168.1.254
+# dns-* options are implemented by the resolvconf package, if installed
+
+iface eth1 inet static
+address 172.20.10.1
+netmask 255.255.255.0
+broadcast 172.20.10.255
+gateway 172.20.10.254
+
+# static route
+up route add -net 172.20.11.0/16 gw 172.20.10.254 dev eth1
+
+The above has 2 Ethernet interfaces and the static route is added to the interface eth1.
+
+For the change to /etc/network/interface to take effect. please restart the "networking" service as follows:
+
+sudo /etc/init.d/networking restart
+
+NOTE: If you added the route already using the "route" then there is no need to restart the networking service because, the next time server is restarted this takes effect.
