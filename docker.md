@@ -23,6 +23,33 @@ sudo docker exec -ti feeee /bin/bash
 newgrp - docker
 
 
+
+Docker镜像保存save、加载load
+
+（1）查看要要保存的镜像的ID
+
+[root@localhost docker]# docker images
+
+（2）保存镜像
+
+[root@localhost docker]#
+
+docker save spring-boot-docker  -o  /home/wzh/docker/spring-boot-docker.tar
+
+（3）加载镜像
+
+可以在任何装 docker 的地方加载 刚保存的镜像了。
+
+docker load -i spring-boot-docker.tar  
+
+root@hd-slave1:~/docker# docker run -p 8081:8080  -d spring-boot-docker
+
+ea5e2adc1b2e4c3bace0643a26bfdd0de4694daa2425ee2bc2a1a01ece1f6f59
+
+root@hd-slave1:~/docker#
+
+
+
 sudo docker exec -ti 3b62 roslaunch husky_gazebo husky_empty_world.launch
 
 /data/nucsim/docker_share/catkin_ws
