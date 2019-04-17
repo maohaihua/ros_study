@@ -6,7 +6,20 @@ sudo docker start 3b62
 sudo docker exec -ti 3b62 /bin/bash
 sudo docker exec -ti feeee /bin/bash
 
+
 切换当前会话到新 group 或者重启 X 会话
+# Add the docker group if it doesn't already exist.
+	sudo groupadd docker
+
+	# Add the connected user "${USER}" to the docker group.
+	# Change the user name to match your preferred user.
+	# You may have to logout and log back in again for
+	# this to take effect.
+	sudo gpasswd -a ${USER} docker
+
+	# Restart the docker daemon.
+	sudo service docker restart
+    
 newgrp - docker
 
 
