@@ -1,3 +1,99 @@
+brctl show
+brctl addbr br0
+ip link set dev br0 up
+ip addr add 10.13.54.1/24 dev br0
+ brctl show
+ docker run -d -p 22  --name="test" centos6:3.0 /usr/sbin/sshd -D
+ ./pipework br0 -i eth1 test 10.13.54.100/24
+
+ssh 127.0.0.1 -p 49163
+
+ route -n
+ 
+ http://www.talkwithtrend.com/Question/137521
+   既然你没有特殊设置，那就不需要设置了，默认docker是允许修改宿主机的nat链表，你可以参考一下我下面的pipework操作
+
+    默认docker的桥接是docker0，我在重新弄一个新的桥接网卡br0
+    先查看当前的桥接信息
+    14:28:48 # brctl show
+    bridge name        bridge id                STP enabled        interfaces
+    docker0                8000.fe7277612cd8        no                veth9kJoy8
+                                                            vethpbsrWJ
+    可以看到只有docker0
+    brctl addbr br0
+    ip link set dev br0 up
+    ip addr add 192.168.2.1/24 dev br0
+    在看看
+    14:28:48 # brctl show
+    bridge name        bridge id                STP enabled        interfaces
+    br0                8000.c281de1d1139        no                veth1pl28636
+    docker0                8000.fe7277612cd8        no                veth9kJoy8
+                                                            vethpbsrWJ
+    14:26:35 # docker run -d -p 22  --name="test" centos6:3.0 /usr/sbin/sshd -D
+    891c11fcba4f6341e2e3f276536a5e1f61a2f6079d475fd196b12c3d5ca151df
+    root@ip-10-10-10-10:~/test/pipework
+    14:26:42 # ./pipework br0 -i eth1 test 192.168.2.202/24
+    root@ip-10-10-10-10:~/test/pipework
+    14:27:16 # docker ps -a
+    CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS                    PORTS                                       NAMES
+    891c11fcba4f        centos6:3.0         /usr/sbin/sshd -D   40 seconds ago      Up 35 seconds             0.0.0.0:49163->22/tcp                       test                
+    df86c911f79f        centos6:3.0         /usr/sbin/sshd -D   6 days ago          Up 6 days                 0.0.0.0:80->80/tcp, 0.0.0.0:49157->22/tcp   passport            
+    3b42ee07ecd2        centos6:3.0         /usr/sbin/sshd -D   8 weeks ago         Exited (255) 6 days ago                                               mysql-tpcc          
+    dfec766fbaa7        centos6:3.0         /usr/sbin/sshd -D   10 weeks ago        Exited (255) 6 days ago                                               redis-slave         
+    06762530db8c        centos6:3.0         /usr/sbin/sshd -D   10 weeks ago        Exited (255) 6 days ago                                               redis-master        
+    846efb9e4d7a        ubuntu:3.0          /usr/sbin/sshd -D   12 weeks ago        Exited (0) 6 days ago                                                 ubuntu-test1        
+    b9a9e6f2caed        centos6:3.0         /usr/sbin/sshd -D   3 months ago        Exited (255) 6 days ago                                               zabbix-server       
+    978fff134b18        centos6:3.0         /usr/sbin/sshd -D   3 months ago        Exited (255) 6 days ago                                               centos6-test5       
+    root@ip-10-10-10-10:~/test/pipework
+    14:27:48 # ssh 127.0.0.1 -p 49163
+    root@127.0.0.1's password: 
+    root@891c11fcba4f:~
+    14:27:56 # ifconfig
+    eth0      Link encap:Ethernet  HWaddr 9E:46:FC:84:E6:83  
+              inet addr:172.17.0.3  Bcast:0.0.0.0  Mask:255.255.0.0
+              inet6 addr: fe80::9c46:fcff:fe84:e683/64 Scope:Link
+              UP BROADCAST RUNNING  MTU:1500  Metric:1
+              RX packets:43 errors:0 dropped:0 overruns:0 frame:0
+              TX packets:33 errors:0 dropped:0 overruns:0 carrier:0
+              collisions:0 txqueuelen:1000 
+              RX bytes:5349 (5.2 KiB)  TX bytes:4617 (4.5 KiB)
+    eth1      Link encap:Ethernet  HWaddr FE:38:31:11:B4:97  
+              inet addr:192.168.2.202  Bcast:0.0.0.0  Mask:255.255.255.0
+              inet6 addr: fe80::fc38:31ff:fe11:b497/64 Scope:Link
+              UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+              RX packets:6 errors:0 dropped:0 overruns:0 frame:0
+              TX packets:7 errors:0 dropped:0 overruns:0 carrier:0
+              collisions:0 txqueuelen:1000 
+              RX bytes:468 (468.0 b)  TX bytes:510 (510.0 b)
+    lo        Link encap:Local Loopback  
+              inet addr:127.0.0.1  Mask:255.0.0.0
+              inet6 addr: ::1/128 Scope:Host
+              UP LOOPBACK RUNNING  MTU:16436  Metric:1
+              RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+              TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+              collisions:0 txqueuelen:0 
+              RX bytes:0 (0.0 b)  TX bytes:0 (0.0 b)
+    root@891c11fcba4f:~
+    14:27:57 # route -n
+    Kernel IP routing table
+    Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+    192.168.2.0     0.0.0.0         255.255.255.0   U     0      0        0 eth1
+    172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 eth0
+    0.0.0.0         172.17.42.1     0.0.0.0         UG    0      0        0 eth0
+    root@891c11fcba4f:~
+
+　2015-06-18
+
+
+
+
+
+
+
+
+
+
+
 https://www.jianshu.com/p/576e01666e5a
 
 需求
