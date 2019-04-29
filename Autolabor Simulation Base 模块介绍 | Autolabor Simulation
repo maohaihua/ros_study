@@ -1,0 +1,35 @@
+https://blog.csdn.net/autolabor/article/details/85121400
+
+
+
+
+
+
+
+
+
+
+根据默认设置，base_link表示小车坐标系，随着通过键盘控制，base_link坐标系在移动，在中间两个静止的坐标系分别是odom(里程计编码器)和real_map(真实坐标系)。由于我们没有设置里程计噪音real_map和odom始终重合，也就意味着里程计信息完全准确。
+
+这个时候我们可以尝试修改ROS脚本文件demo_simulation_base.launch，将noise_v_linear改成0.2，noise_v_theta改成0.5。
+
+首先在刚才打开Terminal的窗口使用Ctrl+C，结束之前的命令，并输入下面内容。
+
+sed -i 's/<param name="noise_v_linear" value="0"\/>/<param name="noise_v_linear" value="0.2"\/>/' demo_simulation_base.launch
+sed -i 's/<param name="noise_v_theta" value="0"\/>/<param name="noise_v_theta" value="0.5"\/>/' demo_simulation_base.launch
+
+    1
+    2
+
+此时再运行该脚本
+
+roslaunch autolabor_simulation_base demo_simulation_base.launch
+
+    1
+
+按照上面的方法在rviz中添加tf数据显示
+--------------------- 
+作者：Autolabor 
+来源：CSDN 
+原文：https://blog.csdn.net/autolabor/article/details/85121400 
+版权声明：本文为博主原创文章，转载请附上博文链接！
