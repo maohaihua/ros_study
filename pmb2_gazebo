@@ -1,0 +1,122 @@
+roslaunch pmb2_gazebo pmb2_gazebo.launch public_sim:=true world:=large_corridor
+
+<!-- start up world -->
+  <include file="$(find pal_gazebo_worlds)/launch/pal_gazebo.launch">
+  
+  <!-- spawn robot in simulation -->
+  <include file="$(find pmb2_gazebo)/launch/pmb2_spawn.launch">
+  
+    <!-- bring up robot -->
+  <include file="$(find pmb2_gazebo)/launch/simulation_pmb2_bringup.launch">
+  
+pal_gazebo.launch
+
+<!-- start up world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+
+empty_world.launch
+    <!-- start gazebo server-->
+  <group if="$(arg use_clock_frequency)">
+    <param name="gazebo/pub_clock_frequency" value="$(arg pub_clock_frequency)" />
+  </group>
+  <node name="gazebo" pkg="gazebo_ros" type="$(arg script_type)" respawn="$(arg respawn_gazebo)" output="screen"
+        required="$(arg required)"
+	args="$(arg command_arg1) $(arg command_arg2) $(arg command_arg3) -e $(arg physics) $(arg extra_gazebo_args) $(arg world_name)" />
+	
+  <!-- start gazebo client -->
+  <group if="$(arg gui)">
+    <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen"/>
+  </group>
+  
+  
+pmb2_spawn.launch  
+    <!-- Diff drive controller and multipliers -->
+  <rosparam command="load" file="$(find pmb2_controller_configuration_gazebo)/config/mobile_base_controller.yaml"/>
+  <rosparam command="load" file="$(find pmb2_controller_configuration_gazebo)/config/mobile_base_controller_multipliers.yaml"/>
+
+  <!-- Robot model -->
+  <include file="$(find pmb2_description)/robots/upload.launch">
+    <arg name="laser_model" value="$(arg laser_model)"/>
+    <arg name="rgbd_sensors" value="$(arg rgbd_sensors)"/>
+  </include>
+
+  <!-- Spawn robot in Gazebo -->
+  <node pkg="gazebo_ros" type="spawn_model" name="$(anon spawn_model)"
+    args="-urdf -param robot_description $(arg gzpose) -model pmb2" />
+    
+  mobile_base_controller.yaml
+  mobile_base_controller:
+  type        : "diff_drive_controller/DiffDriveController"
+  left_wheel  : 'wheel_left_joint'
+  right_wheel : 'wheel_right_joint'
+  publish_rate: 50.0
+  pose_covariance_diagonal : [0.001, 0.001, 1.0e-3, 1.0e-3, 1.0e-3, 0.01]
+  twist_covariance_diagonal: [0.001, 0.001, 1.0e-3, 1.0e-3, 1.0e-3, 0.01]
+  
+  mobile_base_controller_multipliers.yaml
+  mobile_base_controller:
+  wheel_separation_multiplier: 1.0
+  wheel_radius_multiplier    : 1.0
+  
+  upload.launch
+    <!-- Robot description -->
+  <param name="robot_description"
+      command="$(find xacro)/xacro --inorder
+              '$(find pmb2_description)/robots/pmb2.urdf.xacro'
+    laser_model:=$(arg laser_model)
+    rgbd_sensors:=$(arg rgbd_sensors)"
+      />
+
+  <!-- Joint limits -->
+  <rosparam command="load" file="$(find pmb2_description)/config/joint_limits.yaml"/>
+  
+ joint_limits.yaml 
+  joint_limits:
+  wheel_left_joint:
+    has_acceleration_limits: true
+    max_acceleration: &max_wheel_acc 10.0 # rad/s^2 (60/(2*pi) rpm)
+  wheel_right_joint:
+    has_acceleration_limits: true
+    max_acceleration: *max_wheel_acc
+
+
+simulation_pmb2_bringup.launch
+  <!-- Load default controllers -->
+  <include file="$(find pmb2_controller_configuration)/launch/default_controllers.launch"/>
+
+  <!-- Robot state publisher -->
+  <node pkg="robot_state_publisher" type="state_publisher" name="robot_state_publisher">
+    <param name="publish_frequency" type="double" value="50.0"/>
+    <param name="tf_prefix" type="string" value=""/>
+  </node>
+
+  <!-- TF lookup -->
+  <node pkg="tf_lookup" type="tf_lookup" name="tf_lookup" output="screen"/>
+
+  <!-- Twist mux -->
+  <group if="$(arg public_sim)">
+    <include file="$(find pmb2_bringup)/launch/twist_mux.launch">
+      <arg name="cmd_vel_out" value="/mobile_base_controller/cmd_vel" />
+    </include>
+  </group>
+  <group unless="$(arg public_sim)"> -->
+    <include file="$(find pmb2_bringup)/launch/twist_mux.launch">
+     <arg name="cmd_vel_out" value="/twist_mux/cmd_vel" />
+    </include>
+ </group>
+
+  <!-- Speed limit -->
+  <group unless="$(arg public_sim)">
+    <include file="$(find speed_limit)/launch/speed_limit.launch">
+      <arg name="config"    value="$(find pmb2_bringup)/config/speed_limit.yaml"/>
+      <arg name="footprint" value="$(find pmb2_description)/urdf/base/footprint.yaml"/>
+    </include>
+  </group>
+
+  <!-- Joystick controller -->
+  <include file="$(find pmb2_bringup)/launch/joystick_teleop.launch"/>
+
+  <!-- Sonar to cloud -->
+  <group unless="$(arg public_sim)">
+    <include file="$(find sensor_to_cloud)/launch/sonar_to_cloud.launch"/>
+  </group>
