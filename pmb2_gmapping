@@ -1,3 +1,35 @@
 roslaunch pmb2_2dnav_gazebo pmb2_mapping_public.launch
 
 rosrun key_teleop key_teleop.py
+
+
+roslaunch nucedog_2dnav_gazebo nucedog_mapping_public.launch
+
+
+
+
+
+
+
+
+
+
+
+
+find . -name '*.h' |rename 's/pal/nuc/'
+
+sed -i "s/pal/nuc/g" `grep -rl pal ./`
+
+sed -i "s/Pal/Nuc/g" `grep -rl Pal ./`
+
+sed -i "s/PAL/NUC/g" `grep -rl PAL ./`
+
+sed -i "s/pmb2/nucedog/g" `grep -rl pmb2 ./`
+
+sed -i "s/Pmb2/nucedog/g" `grep -rl Pmb2 ./`
+
+sed -i "s/PMB2/NUCEDOG/g" `grep -rl PMB2 ./`
+find . -name '*' |rename 's/pmb2/nucedog/'
+
+sed -i "s/victor.lopez@nuc-robotics.com/maohaihua@nuctech.com/g" `grep -rl victor.lopez@nuc-robotics.com ./`
+
