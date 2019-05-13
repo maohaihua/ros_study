@@ -1,0 +1,42 @@
+https://blog.csdn.net/u011608180/article/details/86570017
+
+https://blog.csdn.net/wly95/article/details/51435107
+
+https://blog.csdn.net/weixin_37719670/article/details/79027035?from=timeline&isappinstalled=0
+
+http://wiki.icub.org/wiki/Creo_Mechanism_to_URDF
+
+smlink_linksw 和regmatlabserver
+
+
+http://wiki.icub.org/wiki/Creo_Mechanism_to_URDF
+
+https://blog.csdn.net/u011104647/article/details/53572679
+
+
+http://wiki.ros.org/sw_urdf_exporter
+
+sw_urdf_exporter
+
+SolidWorks to URDF Exporter
+
+
+After having obtained the CAD assembly file, we need to follow these steps:
+
+Convert from CAD files to SimMechanics using the tool SimMechanics Link, licensed by MathWorks. SimMechanics is link is available on MathWorks website.
+Input: CAD assembly files (Creo or SolidWorks files, in the specific case of iCub Creo)
+Output: XML model description file and .stl mesh files, you can visualize the meshes with MeshLab or Blender
+To convert from SimMechanics Link XML to URDF the tool to be used is the one available on GitHub https://github.com/robotology-playground/simmechanics-to-urdf, authored by Silvio Traversaro.
+Input: XML model description file from SimMechanics Link.
+Optional inputs: .csv file with joint and actuator specifications, yaml configuration file
+Output: XML model description (URDF)
+
+
+https://www.zhihu.com/question/40801341
+
+关于从CAD模型到URDF描述，目前有两个非常好的项目可以来做这个事情，都是基于 Blender 的(Gazebo 需要的dae文件一般也需要从 blender 中导入导出一下)。一个是从欧洲人脑计划的子项目中一个小项目 The BlenderRobotDesigner of the Neurorobotics Platform (NRP)一个是欧洲空间机器人项目中出来的一个小项目 Phobos 目前这两个项目都可以通过 Blender 图形化地以所见即所得的方式进行机器人坐标系的设置和 URDF 以及 SDF 描述文件的导出。
+
+作者：知乎用户
+链接：https://www.zhihu.com/question/40801341/answer/303819618
+来源：知乎
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
