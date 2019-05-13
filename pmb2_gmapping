@@ -1,0 +1,3 @@
+roslaunch pmb2_2dnav_gazebo pmb2_mapping_public.launch
+
+rosrun key_teleop key_teleop.py
