@@ -5,3 +5,29 @@ rosservice call /global_localization "{}"
 rosrun key_teleop key_teleop.py
 
 rosservice call /move_base/clear_costmaps "{}"
+
+
+
+pmb2_navigation_public.launch
+<include file="$(find pmb2_2dnav_gazebo)/launch/pmb2_navigation.launch">
+
+pmb2_navigation.launch
+  <arg name="planner"        default="base"/>
+  <arg name="global_planner" default="global_planner"/>
+  <arg name="local_planner"  default="pal"/>
+  <arg name="localization"   default="amcl"/>
+  <arg name="map"            default="$(env HOME)/.pal/pmb2_maps/configurations/$(arg world)"/>
+  <arg name="octomap"        default="false"/>
+
+  <arg name="public_sim"   default="false"/>
+
+    <include file="$(find pmb2_2dnav)/launch/navigation.launch">
+      <arg name="state"          value="localization"/>
+      <arg name="planner"        value="$(arg planner)"/>
+      <arg name="global_planner" value="$(arg global_planner)"/>
+      <arg name="local_planner"  value="$(arg local_planner)"/>
+      <arg name="localization"   value="$(arg localization)"/>
+      <arg name="map"            value="$(arg map)"/>
+      <arg name="octomap"        value="$(arg octomap)"/>
+      <arg name="public_sim" value="$(arg public_sim)"/>
+    </include>
