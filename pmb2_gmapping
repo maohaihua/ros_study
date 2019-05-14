@@ -46,6 +46,16 @@ pmb2_mapping.launch
           args="-d $(find pmb2_2dnav)/config/rviz/navigation.rviz"/>
 
 navigation.launch
+  <arg name="state" default="localization"/>
+
+  <arg name="planner"        default="base"/>
+  <arg name="global_planner" default="global_planner"/>
+  <arg name="local_planner"  default="pal"/>
+  <arg name="localization"   default="amcl"/>
+  <arg name="mapping"        default="karto"/>
+  <arg name="octomap"        default="false"/>
+  <arg name="public_sim"   default="false"/>
+  
   <arg name="map" default="$(env HOME)/.pal/pmb2_maps/config"/>
 
   <!-- Localization or Mapping state -->
@@ -78,6 +88,14 @@ pal_navigation_sm.launch
     
  move_base.launch   
     
+    
+
+navigation.sh
+# Run localization/mapping
+roslaunch ${ROBOT}_2dnav $STATE.launch localization:=$LOCALIZATION mapping:=$MAPPING map:=$MAP multiple:=$MULTI tf_prefix:=$TF_PREFIX
+
+
+
 
 
 find . -name '*.h' |rename 's/pal/nuc/'
