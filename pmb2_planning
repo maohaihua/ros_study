@@ -1,0 +1,7 @@
+roslaunch pmb2_2dnav_gazebo pmb2_navigation_public.launch
+
+rosservice call /global_localization "{}"
+
+rosrun key_teleop key_teleop.py
+
+rosservice call /move_base/clear_costmaps "{}"
