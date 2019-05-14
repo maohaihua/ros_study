@@ -2,18 +2,53 @@ roslaunch pmb2_2dnav_gazebo pmb2_mapping_public.launch
 
 rosrun key_teleop key_teleop.py
 
-
 roslaunch nucedog_2dnav_gazebo nucedog_mapping_public.launch
 
 
 
+pmb2_mapping_public.launch
+<include file="$(find pmb2_2dnav_gazebo)/launch/pmb2_mapping.launch">
+
+pmb2_mapping.launch
+    <include file="$(find pmb2_gazebo)/launch/pmb2_gazebo.launch">
+    <include file="$(find pmb2_2dnav)/launch/navigation.launch">
+
+    <node name="rviz" pkg="rviz" type="rviz" if="$(arg rviz)"
+          args="-d $(find pmb2_2dnav)/config/rviz/navigation.rviz"/>
+
+navigation.launch
+  <arg name="map" default="$(env HOME)/.pal/pmb2_maps/config"/>
+
+  <!-- Localization or Mapping state -->
+  <node pkg="pal_navigation_sm" type="navigation.sh" name="navigation"
+        args="pmb2 $(arg state) $(arg localization) $(arg mapping) $(arg map) $(arg octomap)"/>
+
+  <!-- Navigation State Machine -->
+  <include file="$(find pmb2_2dnav)/launch/state_machine.launch">
+
+  <!-- Planning -->
+  <include file="$(find pmb2_2dnav)/launch/move_$(arg planner).launch">
+
+  <!-- VO map server -->
+  <group unless="$(arg public_sim)">
+    <include file="$(find pal_vo_server)/launch/vo_server.launch"/>
+  </group>
 
 
-
-
-
-
-
+state_machine.launch
+<arg name="config" default="$(find pmb2_2dnav)/config/state_machine/state_machine.yaml"/>
+  <include file="$(find pal_navigation_sm)/launch/pal_navigation_sm.launch">
+  
+pal_navigation_sm.launch  
+<node pkg ="pal_navigation_sm"
+        type="pal_navigation_main_sm.py"
+        name="pal_navigation_sm"
+        output="screen">
+    <rosparam file="$(arg config)" command="load"/>
+    <param name="state" value="$(arg state)"/>  
+    
+ move_base.launch   
+    
 
 
 find . -name '*.h' |rename 's/pal/nuc/'
