@@ -2,6 +2,8 @@ roslaunch pmb2_2dnav_gazebo pmb2_mapping_public.launch
 
 rosrun key_teleop key_teleop.py
 
+rosservice call /pal_map_manager/save_map "directory: ''"
+
 roslaunch nucedog_2dnav_gazebo nucedog_mapping_public.launch
 
 
