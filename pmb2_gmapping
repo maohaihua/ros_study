@@ -12,8 +12,35 @@ pmb2_mapping_public.launch
 <include file="$(find pmb2_2dnav_gazebo)/launch/pmb2_mapping.launch">
 
 pmb2_mapping.launch
+  <arg name="world"  default="small_office"/>
+  <arg name="laser_model"  default="sick-571"/>
+  <arg name="gzpose" default="-x 0.0 -y 0.0 -z 0.0 -R 0.0 -P 0.0 -Y 0.0"/>
+
+  <arg name="planner"        default="base"/>
+  <arg name="global_planner" default="global_planner"/>
+  <arg name="local_planner"  default="pal"/>
+  <arg name="mapping"        default="karto"/>
+  <arg name="octomap"        default="false"/>
+
+  <arg name="recording" default="false"/>
+  <arg name="extra_gazebo_args" default=""/>
+
+  <arg name="public_sim"   default="false"/>
+
+  <arg name="rviz"     default="true"/>
+  <arg name="gzclient" default="true"/>
+
     <include file="$(find pmb2_gazebo)/launch/pmb2_gazebo.launch">
+
     <include file="$(find pmb2_2dnav)/launch/navigation.launch">
+      <arg name="state"          value="mapping"/>
+      <arg name="mapping"        value="$(arg mapping)"/>
+      <arg name="octomap"        value="$(arg octomap)"/>
+      <arg name="planner"        value="$(arg planner)"/>
+      <arg name="global_planner" value="$(arg global_planner)"/>
+      <arg name="local_planner"  value="$(arg local_planner)"/>
+      <arg name="public_sim" value="$(arg public_sim)"/>
+    </include>
 
     <node name="rviz" pkg="rviz" type="rviz" if="$(arg rviz)"
           args="-d $(find pmb2_2dnav)/config/rviz/navigation.rviz"/>
