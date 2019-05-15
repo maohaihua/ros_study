@@ -1,0 +1,9 @@
+sudo apt install ros-kinetic-bfl
+
+https://github.com/Sr4l/virtual_obstacles
+
+https://github.com/DLu/navigation_layers/tree/indigo
+
+pedestrian_layer-pedestrian-layer
+wu_ros_tools-kinetic
+people-kinetic
