@@ -1,0 +1,139 @@
+
+可以理解 origin 以机器人建图为起点原点，最终 建好图的左下角相对建图时的起点为origin。机器人前进方向为X轴，左方为Y轴 ，
+
+角度 
+机器人向左转为正，从X轴（0度）向左转到Y轴（90度），一直增加，再次回到x轴时为360度。
+
+
+
+
+机器人向右转为负，从X轴（0度）向右转到Y轴负方向（-90度），一直减小，再次回到x轴时为-360度。
+
+
+
+http://wiki.ros.org/map_server
+
+Map format
+
+Maps manipulated by the tools in this package are stored in a pair of files. The YAML file describes the map meta-data, and names the image file. The image file encodes the occupancy data.
+
+Image format
+
+The image describes the occupancy state of each cell of the world in the color of the corresponding pixel. In the standard configuration, whiter pixels are free, blacker pixels are occupied, and pixels in between are unknown. Color images are accepted, but the color values are averaged to a gray value.
+
+Image data is read in via SDL_Image; supported formats vary, depending on what SDL_Image provides on a specific platform. Generally speaking, most popular image formats are widely supported. A notable exception is that PNG is not supported on OS X.
+
+YAML format
+
+The YAML format is best explained with a simple, complete example:
+
+image: testmap.png
+resolution: 0.1
+origin: [0.0, 0.0, 0.0]
+occupied_thresh: 0.65
+free_thresh: 0.196
+negate: 0
+
+Required fields:
+
+    image : Path to the image file containing the occupancy data; can be absolute, or relative to the location of the YAML file
+
+    resolution : Resolution of the map, meters / pixel
+
+    origin : The 2-D pose of the lower-left pixel in the map, as (x, y, yaw), with yaw as counterclockwise rotation (yaw=0 means no rotation). Many parts of the system currently ignore yaw.
+
+    occupied_thresh : Pixels with occupancy probability greater than this threshold are considered completely occupied.
+
+    free_thresh : Pixels with occupancy probability less than this threshold are considered completely free.
+
+    negate : Whether the white/black free/occupied semantics should be reversed (interpretation of thresholds is unaffected) 
+
+Optional parameter:
+
+    mode : Can have one of three values: trinary, scale, or raw. Trinary is the default. More information on how this changes the value interpretation is in the next section. 
+
+Value Interpretation
+
+Given a pixel that has a COLOR value x in the range [0, 256), how should we interpret this value when put into the ROS message? First we convert integer x to a floating point number p depending on the interpretation of the negate flag from the yaml.
+
+    If negate is false, p = (255 - x) / 255.0. This means that black (0) now has the highest value (1.0) and white (255) has the lowest (0.0).
+
+    If negate is true, p = x / 255.0. This is the non-standard interpretation of images, which is why it is called negate, even though the math indicates that x is not negated. Nomenclature is hard. 
+
+Trinary
+
+The standard interpretation is the trinary interpretation, i.e. interpret all values so that the output ends up being one of three values.
+
+    If p > occupied_thresh, output the value 100 to indicate the cell is occupied.
+
+    If p < free_thresh, output the value 0 to indicate the cell is free.
+
+    Otherwise, output -1 a.k.a. 255 (as an unsigned char), to indicate that the cell is unknown. 
+
+Scale
+
+This tweaks the above interpretation to allow for more output values than trinary.
+
+    As before if p > occupied_thresh, output the value 100. If p < free_thresh, output the value 0.
+
+    Otherwise, output 99 * (p - free_thresh) / (occupied_thresh - free_thresh) 
+
+This will allow you to output a full gradient of values ranging from [0, 100]. To output -1, simply use the alpha channel of a png, where any transparency will be interpreted as unknown.
+
+Raw
+
+This mode will output x for each pixel, so output values are [0, 255].
+
+Command-line Tools
+
+map_server
+map_server is a ROS node that reads a map from disk and offers it via a ROS service.
+
+The current implementation of the map_server converts color values in the map image data into ternary occupancy values: free (0), occupied (100), and unknown (-1). Future versions of this tool may use the values between 0 and 100 to communicate finer gradations of occupancy.
+
+Usage
+
+map_server <map.yaml>
+
+Example
+
+rosrun map_server map_server mymap.yaml
+
+Note that the map data may be retrieved via either latched topic (meaning that it is sent once to each new subscriber), or via service. The service may eventually be phased out.
+
+Published Topics
+map_metadata (nav_msgs/MapMetaData)
+
+    Receive the map metadata via this latched topic. 
+
+map (nav_msgs/OccupancyGrid)
+
+    Receive the map via this latched topic. 
+
+Services
+static_map (nav_msgs/GetMap)
+
+    Retrieve the map via this service. 
+
+Parameters
+~frame_id (string, default: "map")
+
+    The frame to set in the header of the published map. 
+
+map_saver
+map_saver saves a map to disk, e.g., from a SLAM mapping service.
+
+Usage
+
+rosrun map_server map_saver [--occ <threshold_occupied>] [--free <threshold_free>] [-f <mapname>]
+
+map_saver retrieves map data and writes it out to map.pgm and map.yaml. Use the -f option to provide a different base name for the output files. The --occ and --free options take values between 0 and 100.
+
+Example
+
+rosrun map_server map_saver -f mymap
+
+Subscribed Topics
+map (nav_msgs/OccupancyGrid)
+
+    Map will be retrieved via this latched topic. 
