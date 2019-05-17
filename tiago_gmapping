@@ -1,0 +1,5 @@
+roslaunch tiago_2dnav_gazebo tiago_mapping_public.launch
+
+rosrun key_teleop key_teleop.py
+
+rosservice call /pal_map_manager/save_map "directory: ''"
