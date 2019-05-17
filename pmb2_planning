@@ -31,3 +31,68 @@ pmb2_navigation.launch
       <arg name="octomap"        value="$(arg octomap)"/>
       <arg name="public_sim" value="$(arg public_sim)"/>
     </include>
+
+navigation.launch
+ <arg name="state" default="localization"/>
+
+  <arg name="planner"        default="base"/>
+  <arg name="global_planner" default="global_planner"/>
+  <arg name="local_planner"  default="pal"/>
+  <arg name="localization"   default="amcl"/>
+  <arg name="mapping"        default="karto"/>
+  <arg name="octomap"        default="false"/>
+  <arg name="public_sim"   default="false"/>
+
+  <arg name="map" default="$(env HOME)/.pal/pmb2_maps/config"/>
+
+  <!-- Localization or Mapping state -->
+  <node pkg="pal_navigation_sm" type="navigation.sh" name="navigation"
+        args="pmb2 $(arg state) $(arg localization) $(arg mapping) $(arg map) $(arg octomap)"/>
+
+  <!-- Navigation State Machine -->
+  <include file="$(find pmb2_2dnav)/launch/state_machine.launch">
+    <arg name="state" value="$(arg state)"/>
+  </include>
+
+  <!-- Planning -->
+  <include file="$(find pmb2_2dnav)/launch/move_$(arg planner).launch">
+    <arg name="global_planner" value="$(arg global_planner)"/>
+    <arg name="local_planner"  value="$(arg local_planner)"/>
+    <arg name="public_sim" value="$(arg public_sim)"/>
+  </include>
+  
+  navigation.sh
+  # Run localization/mapping
+roslaunch ${ROBOT}_2dnav $STATE.launch localization:=$LOCALIZATION mapping:=$MAPPING map:=$MAP multiple:=$MULTI tf_prefix:=$TF_PREFIX
+
+state_machine.launch
+  <arg name="state"  default="localization"/>
+  <arg name="config" default="$(find pmb2_2dnav)/config/state_machine/state_machine.yaml"/>
+
+  <include file="$(find pal_navigation_sm)/launch/pal_navigation_sm.launch">
+    <arg name="state"  value="$(arg state)"/>
+    <arg name="config" value="$(arg config)"/>
+  </include>
+  
+ pal_navigation_sm.launch
+   <arg name="state"  default="localization"/> <!-- localization, mapping -->
+  <arg name="config" default=""/>
+
+  <arg name="frequency" default="1.0"/>
+  <arg name="base_frame" default="/base_footprint"/>
+  <arg name="map_frame"  default="/map"/>
+
+  <!-- Pal Navigation SM SMACH -->
+  <node pkg ="pal_navigation_sm"
+        type="pal_navigation_main_sm.py"
+        name="pal_navigation_sm"
+        output="screen">
+    <rosparam file="$(arg config)" command="load"/>
+    <param name="state" value="$(arg state)"/>
+  </node>
+  
+ pal_navigation_main_sm.py 
+  MapsManagerService()
+  
+  move_base.launch
+ 
