@@ -142,4 +142,67 @@ tiago_navigation.launch:
     </include>
   </group>
   
-  
+localization.launch:
+  <arg name="localization"  default="amcl"/>
+
+  <arg name="map"     default="$(env HOME)/.pal/tiago_maps/config"/>
+  <arg name="symlink" default="$(env HOME)/.pal/tiago_maps/config"/>
+  <arg name="multiple" default="false"/>
+  <arg name="tf_prefix" default=""/>
+
+  <arg name="mapping" default=""/>
+
+  <!-- Map -->
+  <include file="$(find pal_navigation_sm)/launch/map.launch">
+    <arg name="map"     value="$(arg map)"/>
+    <arg name="symlink" value="$(arg symlink)"/>
+    <arg name="multiple" value="$(arg multiple)"/>
+    <arg name="tf_prefix" value="$(arg tf_prefix)"/>
+  </include>
+
+  <!-- Localization -->
+  <include file="$(find tiago_2dnav)/launch/localization_$(arg localization).launch">
+    <arg name="multiple" value="$(arg multiple)"/>
+    <arg name="tf_prefix" value="$(arg tf_prefix)"/>
+  </include>
+
+map.launch:
+  <arg name="map"        default=""/>
+  <arg name="symlink"    default=""/>
+  <arg name="multiple" default="false"/>
+  <arg name="tf_prefix" default=""/>
+
+  <arg name="octomap"    default="false"/>
+
+  <!-- Setup map -->
+  <node name="map_setup" pkg="pal_navigation_sm" type="map_setup.py">
+    <param name="map" value="$(arg map)"/>
+  </node>
+
+  <!-- Run the map server -->
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map)/map.yaml"/>
+
+map_setup.py:
+MapSetup()
+
+localization_amcl.launch:
+  <arg name="scan" default="scan"/>
+  <arg name="multiple" default="false"/>
+  <arg name="tf_prefix" default=""/>
+
+  <arg name="amcl_with_mapping" default="false"/>
+
+  <node pkg="amcl" type="amcl" name="amcl" output="screen">
+    <remap from="scan" to="$(arg scan)"/>
+
+    <!-- Load the last saved pose estimate (initial pose) -->
+    <rosparam if="$(arg multiple)" file="$(env HOME)/.pal/$(arg tf_prefix)_pose.yaml" command="load"/>
+    <rosparam unless="$(arg multiple)" file="$(env HOME)/.pal/pose.yaml" command="load"/>
+
+    <rosparam file="$(find tiago_2dnav)/config/localization/amcl.yaml" command="load"/>
+    <param name="use_map_topic" value="$(arg amcl_with_mapping)"/>
+    <param name="first_map_only" value="true"/>
+    <param if="$(arg multiple)" name="odom_frame_id" value="$(arg tf_prefix)/odom"/>
+    <param if="$(arg multiple)" name="base_frame_id" value="$(arg tf_prefix)/base_footprint"/>
+    <param if="$(arg multiple)" name="global_frame_id" value="$(arg tf_prefix)/map"/>
+  </node>
