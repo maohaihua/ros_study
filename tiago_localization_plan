@@ -142,6 +142,94 @@ tiago_navigation.launch:
     </include>
   </group>
   
+ navigation.launch:
+    <arg name="state" default="localization"/>
+
+  <arg name="planner"        default="base"/>
+  <arg name="global_planner" default="global_planner"/>
+  <arg name="local_planner"  default="pal"/>
+  <arg name="localization"   default="amcl"/>
+  <arg name="mapping"        default="karto"/>
+  <arg name="octomap"        default="false"/>
+  <arg name="disable_vo"     default="false"/>
+  <arg name="public_sim"     default="false"/>
+  <arg name="rgbd_sensors"   default="false"/>
+  <arg name="tf_prefix"      default=""/>
+  <arg name="multiple"       default="false"/>
+
+  <arg name="map" default="$(env HOME)/.pal/tiago_maps/config"/>
+
+  <!-- Localization or Mapping state -->
+  <node pkg="pal_navigation_sm" type="navigation.sh" name="navigation"
+        args="tiago $(arg state) $(arg localization) $(arg mapping) $(arg map) $(arg octomap) $(arg multiple) $(arg tf_prefix)" output="screen"/>
+
+  <!-- Navigation State Machine -->
+  <include file="$(find tiago_2dnav)/launch/state_machine.launch">
+    <arg name="state" value="$(arg state)"/>
+    <arg name="public_sim" value="$(arg public_sim)"/>
+    <arg if="$(arg multiple)" name="map_frame" value="/$(arg tf_prefix)/map"/>
+    <arg if="$(arg multiple)" name="base_frame" value="/$(arg tf_prefix)/base_footprint"/>
+  </include>
+
+  <!-- Planning -->
+  <include file="$(find tiago_2dnav)/launch/move_$(arg planner).launch">
+    <arg name="global_planner" value="$(arg global_planner)"/>
+    <arg name="local_planner"  value="$(arg local_planner)"/>
+    <arg name="public_sim"     value="$(arg public_sim)"/>
+    <arg name="rgbd_sensors"   value="$(arg rgbd_sensors)"/>
+    <arg name="tf_prefix"      value="$(arg tf_prefix)"/>
+    <arg name="multiple"       value="$(arg multiple)"/>
+  </include>
+
+  <!-- VO map server -->
+  <group unless="$(arg public_sim)">
+    <include file="$(find pal_vo_server)/launch/vo_server.launch"/>
+  </group>
+
+navigation.sh:
+# Run localization/mapping
+roslaunch ${ROBOT}_2dnav $STATE.launch localization:=$LOCALIZATION mapping:=$MAPPING map:=$MAP multiple:=$MULTI tf_prefix:=$TF_PREFIX
+ 
+state_machine.launch:
+  <arg name="state"  default="localization"/>
+
+  <arg name="public_sim"   default="false"/>
+
+  <arg name="sim_sufix" value="_public_sim"     if="$(arg public_sim)"/>
+  <arg name="sim_sufix" value=""                unless="$(arg public_sim)"/>
+
+  <arg name="config" default="$(find tiago_2dnav)/config/state_machine/state_machine$(arg sim_sufix).yaml"/>
+
+  <arg name="base_frame" default="/base_footprint"/>
+  <arg name="map_frame"  default="/map"/>
+
+  <include file="$(find pal_navigation_sm)/launch/pal_navigation_sm.launch">
+    <arg name="state"  value="$(arg state)"/>
+    <arg name="config" value="$(arg config)"/>
+    <arg name="base_frame" value="$(arg base_frame)"/>
+    <arg name="map_frame"  value="$(arg map_frame)"/>
+  </include>
+  
+ pal_navigation_sm.launch:
+   <arg name="state"  default="localization"/> <!-- localization, mapping -->
+  <arg name="config" default=""/>
+
+  <arg name="frequency" default="1.0"/>
+  <arg name="base_frame" default="/base_footprint"/>
+  <arg name="map_frame"  default="/map"/>
+
+  <!-- Pal Navigation SM SMACH -->
+  <node pkg ="pal_navigation_sm"
+        type="pal_navigation_main_sm.py"
+        name="pal_navigation_sm"
+        output="screen">
+    <rosparam file="$(arg config)" command="load"/>
+    <param name="state" value="$(arg state)"/>
+  </node>
+  
+pal_navigation_main_sm.py:  
+MapsManagerService 
+  
 localization.launch:
   <arg name="localization"  default="amcl"/>
 
