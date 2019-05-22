@@ -1,0 +1,298 @@
+
+https://blog.csdn.net/qingfengtsing/article/details/51734288
+
+转载地址：http://blog.csdn.net/lanhuadechenmo/article/details/46715169
+
+在尝试完成用AMCL来导航和避障后，下面对Navigation的理解作下总结。本篇的主要内容包括：控制架构，三个接口，tf变换，AMCL，move_base参数解析。结合笔者的开发经验，参考众多前辈的经验以及《ros by example》，给出自己的理解，最后给出自己的思考。希望对大家有所帮助，难免有错误和不足之处，请各位指导。
+
+ 参考（谢谢各位前辈）：
+
+http://blog.exbot.net/archives/1129
+
+http://blog.csdn.net/heyijia0327/article/details/41823809
+
+http://blog.csdn.net/heyijia0327/article/details/41831529
+
+http://m.blog.csdn.net/blog/dxuehui/39347041
+
+http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
+
+http://wiki.ros.org/tf/Tutorials
+
+http://blog.exbot.net/archives/1686
+
+    本文引用了不少人的博文，因为很经典，所以没有做太多改动。对那些曾经提供帮助的人表示感谢。
+
+第一部分：控制架构/层次
+
+       关于机器人运动控制系统架构，在《ros by example》 chapter 7一章第二节中介绍了控制机器人的5个层次，从低到高依次是：motor controllers anddrivers->  ROS base controller  ->Frame-Base Motion（move_base）->Frame-Base Motion（gmapping + amcl）->Semantic Goals。总结起来如下图所示：
+
+      
+
+        其实，我们可以理解为以下几个问题：电机如何控制？小车平台怎么跟上位机连接，如何传送数据？如何进行路径规划？如何建立环境地图？如何设定运动的目标？这里我也参考别人的思路，把这些分为三个层次。
+
+1.最底层：机器人本身的电机驱动和控制部分，驱动器接收的是电机左右轮期望速度，根据期望速度对左右轮分别进行 PID控速。同时，定时采样电机码盘值，并转化为左右轮速度值上传给电机控制器。控制器将左右轮的速度值，结合机器人的运动学模型，用航迹推演法推算出机器人当前的速度，包括线速度和角速度。控制器也可以接受机器人的控制指令（cmd_vel），将速度解算为左右轮的期望速度，从而给电机的驱动部分，控制电机转动。它的输入是控制速度值，输出是电机的转速。
+
+2.中间通信层：电脑端和机器人平台的控制通信。电脑将发出的速度指令传给平台的控制部分，以及电脑端接受控制部分的当前速度，然后发布/odom topic，让其他节点订阅，从而进行机器人位置估计。
+
+3.决策层：与导航有关，建立地图和实现定位，然后用move_base根据你发布的传感器信息做出路径规划，输出机器人的速度和转向速度。这部分主要与ROS中的Navigation stack有关，可以调用相应的package，如amcl，gmapping，move_base，map_server等。它的输入是各种传感器的信息和地图，输出是速度cmd_vel。
+
+     总结：不同的人开发平台不同，思路也不同。但大体可以按照这三个部分来理解。
+
+ 
+
+第二部分：三个接口
+
+        在了解了整个系统的架构之后，我们可以考虑下各部分之间实现的接口问题。包括上位机和下位机之间的通信问题，一般机器人都使用的里程计的接口问题，以及其他的外接传感器问题。明白各个接口的输入和输出，以及怎样提取数据进行转换。
+
+1.速度接口
+
+       在我们了解move_base之后，会知道导航规划层的输出是cmd_vel topic, 数据类型为 geometry_msgs/Twist 。对于移动平台来说，有差分和全向之分，对于一般的差分平台，我们只用到了linear.x 和angular z两个值，对于全向平台，还多了一个linear.y。不同类型的移动平台，运动学不同，因此将速度值解算成电机的转速值的方式也是不同的。底层平台一般接受的是轮子的期望转速，如果平台已经封装完好，则一般接受的是上层发出的速度。上层和下层之间的通信一般通过串口。
+
+       如果是开发的下位机或者底层平台，需要注意速度的平滑，可以用插值的方法平滑速度，避免因为过大的加减速等造成的下危机或底层平台无法正常运动。笔者所在的团队开发的一个移动平台过程中遇到此问题，后来加入插值后运动明显平稳许多。
+
+       思路：接收上层发布的cmd_vel topic，然后将该速度做处理，通过运动学模型解算出期望的轮子的速度，发送给下位机执行。
+
+2.里程计接口
+
+        里程计属于内部传感器，一般的平台都会装入里程计进行航迹推测，对机器人平台的位置进行粗略的估计。即：通过编码器的转动推测轮子在时间片中的位移，进一步算出机器人整体的位移与速度。导航一般都会要求一个里程计数据的输入，里程计是相对于机器人中心的位置推测，误差会累积。这里需要注意的是发布频率，它涉及到之后的costmap更新与坐标系的访问超时问题。
+
+3.传感器接口
+
+         一般常用的外部传感器有laser ,rgbd-camera,camera,gyroscope等，都可以找到相应的驱动，roslaunch相应文件就可以了。这里要提到static tf，传感器一般在消息的 header中都需要相应的传感器采集坐标系，当laser,camera等固定好之后，可以用静态tf来将传感器所在的坐标系的数据变换到以机器人中心所在的坐标系，便于信息的传递。
+
+         总结：就是在硬件要实现，就要考虑各个模块之间的连接，即是接口问题。硬件的问题不能小看，很多时候软件上出现的问题根本原因可能在于硬件。
+
+ 
+
+第三部分：tf
+
+介绍：
+
+        tf库这本部分很关键，是很容易出错的地方。建议在了解接口问题之后，写程序之前，先把要整个系统的tf tree 理清楚，这个过程中可以确定你的信息的传递，如果信息的传递没有问题，那么tftree 一般也没有问题，反过来亦然。在调试程序时也可以根据错误提示，逐步去解决tf 问题。
+
+        tf库的目的是实现系统中任一个点在所有坐标系之间的坐标变换，也就是说，只要给定一个坐标系下的一个点的坐标，就能获得这个点在其他坐标系的坐标。为了达到这个目的，就需要确定各个坐标系之间的关系，也就是获得任一坐标系在其他任一个坐标系下的描述。
+
+        ROS的坐标转换库，提供实时的坐标转换查询与更改服务。它将坐标转换表示为树形结构，而坐标转换数据的更新速度直接影响其他节点的实时性。ROS 中对于多坐标系的处理是使用树型表示。
+
+1.数据类型
+
+ 
+
+定义了一个TF转换树，而且是单遍历的树，即关系是从父节点到子节点，tf定义和存储这棵关系树后，这样框架之间的关系就很明确，tf会帮我们调用这些关系。
+
+2.原理(引用)
+
+基本原理：tb的类里有个publisher，tl的类里有个subscriber，一个发布叫/tf的topic，一个订阅这个topic，传送的消息tfmessage里包含了parent frameid和child frameid的信息。
+
+       这个机制意味着，所有的tb会发布某一特定的parent到child的变换，而所有tl会收到所有的这些变换，然后tl利用一个 tfbuffercore的数据结构维护一个完整的树结构及其状态。基于此，tl在使用这棵树时，会lookuptransform或 waitfortransform来获得任意坐标系之间的变换。那就是只要是一个tl，就要跟所有tb建立连接，就要收取所有的/tf消息，来维护一棵完整的树，并且还要 负责搜索这棵树，找到一条变换的路径，然后乘呀乘，并且每次都要如此。
+
+3.tf库的优缺点
+
+优点：tf直接调用即可，中间计算细节不用考虑；接口简单，广播和监听可以搞定；维护坐标系之间的关系时容易确定问题再哪里；考虑与时间相关的变换；支持tf-prefix，可以在多机器人上用。
+
+缺点：
+1）树的结构很简单，但有时笨拙，搜索时需要遍历，一层层确定关系，计算有时很麻烦。
+
+2）每个tl都要维护同一颗树，网络传输的负荷比较大。这一点，tf的设计者是完全承认的。
+
+3）很难满足实时性的要求，这一点比较显然。也是大家都直到的。
+
+    总结：存在即合理。tf听起来简单用起来却不是那么容易。我们要理解它之后才决定要不要用，即使用了也要知道它的优缺点，顺便思考有没有什么可以代替的。
+
+4.base_link, odom, fixed_frame,target_frame和map的关系
+
+    在tf 中我们会涉及到几个概念base_link, odom, fixed_frame,target_frame和map，那么我们来看下它们在ROS中的定义。有时在调试中遇到无法解释的现象，很可能是没有弄清楚它的本质含义。比如笔者在使用laser 尝试导航时，看到机器人姿态一直相对于map漂移。
+
+（1）map
+
+         map是虚拟世界中的固定frame, 它的Z轴指向正上方，也就是天空。一个时间点上移动机器人的姿态相对于map不应该出现明显的漂移。如果一个map是不连续稳定的那就意味着机器人的位置在任何一个时间点上都会是变化的。一般激光地位仪等设备会连续的计算map的位置因而造成它的不稳定性，这也使它不能成为一个好的参照体frame.
+
+        一般与odom（或者odom_combined）相连，语义为一个经过先验（或者SLAM）地图数据矫正过的，在地图中的位姿信息。与odom同为全局坐标系，原点为地图原点（地图原点在地图相应的yaml文件中有规定）。
+
+（2）odom
+
+    odom是一个很好的固定世界参照frame.机器人的姿态相对odom而言是随时间是经常可变，所以在长远中它不是一个好的全局参照系。但在某一时间点而言它相对机器人的位置是不变的。典型的odom frame 是通过运动源来计算出来的, 例如轮子运动，视觉偏移等。Odom frame 的准确性使它在局部参照系中是很有用的。但是不适合作全局参照frame.
+
+        一般直接与base_link 相链接，语义为一个对于机器人全局位姿的粗略估计。取名来源于odometry（里程计），一般这个坐标系的数据也是来源于里程计，原点为开始计算位姿那个时刻的机器人的位置。
+
+        odom_combined 一般为好几种位姿估计方法的信息融合后的数据。在navigation stack中有 robot_pose_ekf 这个包是用扩展卡尔曼滤波算法（EKF）融合不同传感器的数据。
+（3）base_link
+
+        base_link参照系紧紧粘在移动机器人基座上的任何一个位置和角度。一般位于tf tree的最根部，物理语义原点一般为表示机器人中心，为相对机器人的本体的坐标系。一般在urdf文件中都要定义base_link，它代表了机器人的主干，其它所有的 frame都是相对于base_link定义并粘在一起的。它们一起相对于大地图map移动，让机器人移动就是向tf发布geometry_msgs::TransformStamped 消息通知ros base_link相对于map的tf转换关系。
+
+（4）各个rfames的关系
+
+        frame之间是按树状结构组织的。所以每个frame只有一个父节点和任意多个子节点。上述几个frame的关系:map->odom-->base_link。
+
+        odom到base_link的坐标转换是从运动源计算出来广播的。
+
+        map到base_link的坐标转换是被定位模块计算出来的. 但定位模块并不发布map到base_link的转换. 相反它先接受从odom到base_link的转换, 再计算并广播map到odom的位置转换关系。
+
+（5）fixed_frame
+
+       RViz中认定的大世界就是fixed_frame。
+
+（6）target_frame
+
+       Rviz中视觉跟踪的frame是 target_frame。
+
+       一个完整的tf tree如下图所示：
+
+第四部分：AMCL
+
+        定位模块作为规划层的输入与参考数据，对于ROSnavigation 体系，因为它先天的模块间通讯方式实现了模块间的完全解耦，所以对于导航规划层用什么定位方法，静态还是动态的地图，对于导航层内部几乎没有区别。只要有相应的数据就可以执行相应功能。我们可以使用其他的定位方式。
+
+        AMCL是机器人在二维移动过程中概率定位系统。它应用自适应的蒙特卡洛定位方式（或者KLD采样），采用微粒过滤器来跟踪已知地图中机器人的位姿。关于AMCL的数学知识，可以参考《Probabolistic Robotics》书的chapter 8。目前所实施的，这个节点只和激光扫描和激光地图工作，在base_scan的topic上利用激光数据来定位。它可以被扩展应用与其他的激光数据工作。
+
+1.Node
+
+         AMCL需要基于激光的地图/激光扫描/TF转换，并且输出位置估计。在启动时，AMCL根据所提供的参数来初始化它的颗粒过滤器。由于默认原因，如果没有参数设置，初始过滤状态以一个中等大小的粒子云为中心（0,0,0）。有三种类型的ROS参数可以用来配置AMCL节点：整体滤波器，激光模式，odometery模型。2.Transforms
+
+        AMCL将传入的激光扫描数据转为里程计结构（odom_frame_id）。因此，必须存在从激光发布到里程计的tf树转换。
+
+        实现细节：在接收第一个激光扫描，AMCL查找激光结构和base计结构的TF转换，并且锁存。所以AMCL不能处理激光于base相对移动的情况。
+
+       下面的图片显示用里程计和AMCL定位的不同之处。在操作过程中，AMCL估计base结构相当于global结构TF转换，但是，它只是放global和里程计之间的TF转换。从本质上，这种转换利用航位推算来处理漂移，所发布的转换是远期的。
+
+        OdometryLocation - 只是通过里程计的数据来处理/base和/odom之间的TF转换；
+
+        AMCL Map Location – 查找/base和激光的TF。/base通过/odom在/map中行走，机器人根据已知激光数据，估计/base相对于相对于/global的TF，那么我们可以知道/map和/base之间的TF，从而估计位置。
+
+ 
+
+第五部分：move_base参数解析
+
+1.介绍
+
+       move_base提供了ROS导航的配置、运行、交互接口。它实现了一个供上层节点调用的action 接口（通过actionlib 实现），即给定坐标信息与相应坐标位置，执行相应的安全导航动作。对于下层控制器，输出为cmd_vel 速度。它规定了这个navigation的行为。
+
+2.这里我们要提到ROS navigation 。navigation 导航规划层提供一个在良好的定位条件下，安全导航到指定目标坐标的功能。总体可以视为一个慎思-反应混合范式。从层次上来分：
+
+·        行为层： move_base 综合机器人状态与上层指令，给出机器人当前行为：正常导航，执行恢复动作，给上层节点返回失败，终止导航。其中恢复动作可以自己定义。
+
+·        全局规划层：global_planner
+
+·        局部规划层： local_planner
+
+·        控制器层（一般就是之前自己写的速度发送部分）
+
+3.navigation stack 里面包含了很多package。我们看下与路径规划有关的部分。
+
+（1）costmap_2d：这一部分可看作为navigation的输入处理器。不同的传感器输入的数据差异很大（激光雷达 & RGBD-camera）通过costmap_2d ， 不同的数据被处理成统一的格式：栅格地图，权值用经过概率方法处理过的，表示空间中障碍物，未知与安全区域。生成出来的costmap则是planner 的输入。
+
+（2）global_planner：根据给定的目标位置进行总体路径的规划，为navigation的全局规划器，接受costmap生成的 global costmap 规划出从起始点到目标点的路径，为local_planner作出参考。
+
+        在ROS的导航中，首先会通过全局路径规划，计算出机器人到目标位置的全局路线。这一功能是navfn这个包实现的。navfn通过Dijkstra最优路径的算法，计算costmap上的最小花费路径，作为机器人的全局路线。
+
+（3）local_planner：根据附近的障碍物进行躲避路线规划，为navigation 的局部规划器，接受costmap 生成的local costmap 规划出速度。
+
+        本地的实时规划是利用base_local_planner包实现的。该包使用Trajectory Rollout 和Dynamic Windowapproaches算法计算机器人每个周期内应该行驶的速度和角度（dx，dy，dtheta velocities）。
+
+        base_local_planner这个包通过地图数据，通过算法搜索到达目标的多条路经，利用一些评价标准（是否会撞击障碍物，所需要的时间等等）选取最优的路径，并且计算所需要的实时速度和角度。
+其中，Trajectory Rollout 和DynamicWindow approaches算法的主要思路如下
+     1） 采样机器人当前的状态（dx,dy,dtheta）；
+     2） 针对每个采样的速度，计算机器人以该速度行驶一段时间后的状态，得出一条行驶的路线。
+     3） 利用一些评价标准为多条路线打分。
+     4） 根据打分，选择最优路径。
+     5） 重复上面过程。
+
+（4）recovery_behavior: 规定move_base 行为集合中处理异常情况的行为
+
+以上是主体部分。
+
+（5）nav_core：要理解ROS navigation最重要的部分是nav_core，它包含了global_planner，local_planner 与 recovery_behavior的基类的头文件。
+
+注：对于pluginlib,在ROS navigation中，move_base 提供的是框架，在move_base中是通过nav_core中规定的planner 与 recovery_behavior的基类的接口进行调用。与具体的实现方法隔离开来。而具体采用的方法由pluginlib 根据不同参数导入。这样的实现方法使得navigation的可定制性大大增加。这赋予了这个框架很大的灵活性。通过不同的配置方法可以让navigation适应很多不同的任务。
+
+4.参数
+
+       move_base使用前需要配置一些参数：运行成本、机器人半径、到达目标位置的距离，机器人移动的速度，这些参数在以下几个配置文件中：
+• base_local_planner_params.yaml
+• costmap_common_params.yaml
+• global_costmap_params.yaml
+• local_costmap_params.yaml
+
+        官网上都有详细的各个参数的含义的解释。在配置这些参数时，首先要理解这些参数的含义，还要找出对整体性能影响比较大的几个参数。由于参数很多，笔者理解的不够深入，在实际调试过程中，小车效果很差。因此，建议了解每个配置文件中都大概有哪几种参数，作用是什么，参数值的大与小对系统有什么影响，会出现何种情况。哪些参数是非常关键的，一定要注意这些参数是否在合理的范围之内。并且利用调试的工具去调试程序，修改参数值大小。
+
+（1）base_local_planner_params.yaml
+
+分类：6种。分别为robot configuration, goal tolerance,forward simulation, trajectory scoring, oscillation prevention, and globalplan.
+
+1）RobotConfiguration Parameters
+
+      主要是各种速度参数以及平台的类型。
+
+acc_lim_x (double) ，acc_lim_y (double)，acc_lim_theta (double)，max_vel_x (double)，min_vel_x (double)，max_vel_theta (double)，min_vel_theta (double)，min_in_place_vel_theta (double)，backup_vel (double,default: -0.1)  itmust be negative in order for the robot to actually reverse. escape_vel(double,default: -0.1) it must be negative in order for the robotto actually reverse.
+
+holonomic_robot (bool,default: true)
+
+The following parameters are only used if holonomic_robot isset to true: y_vels(list,default: [-0.3, -0.1, 0.1, 0.3]) ，需要注意。
+
+2)GoalTolerance Parameters
+
+     主要是到达目标点的设置。
+yaw_goal_tolerance (double, default:0.05) ，xy_goal_tolerance (double,default: 0.10) ，latch_xy_goal_tolerance (bool,default: false)
+
+3)Forward Simulation Parameters
+
+    仿真时的参数。
+
+sim_time (double, default:1.0) ，sim_granularity (double, default: 0.025)
+
+angular_sim_granularity (double, default: ~<name>/sim_granularity)
+
+vx_samples (integer, default:3) ，vtheta_samples (integer, default: 20)
+
+controller_frequency (double, default:20.0)
+
+4）Trajectory ScoringParameters
+
+      主要是轨迹范围的设置。
+
+meter_scoring (bool, default: false)  ，pdist_scale (double,default: 0.6) ，gdist_scale (double,default: 0.8) ，occdist_scale (double,default: 0.01) ，heading_lookahead (double,default: 0.325)  ，heading_scoring (bool,default: false)heading_scoring_timestep(double,default: 0.8) ，dwa (bool,default: true)，publish_cost_grid_pc (bool,default: false)，global_frame_id (string,default: odom) 
+
+5）OscillationPrevention Parameters
+
+oscillation_reset_dist (double, default: 0.05)
+
+6）GlobalPlan Parameters
+prune_plan (bool, default: true)
+
+（2）global_costmap_params.yaml和global_costmap_params.yaml
+
+    全局代价地图的配置和局部代价地图的配置。分类：3种。分别为coordinate frame and tf, rate, robot description and map management.分层：static map,obstacle map,inflation,others.
+
+1）Coordinate frame and tf parameters
+
+global_frame (string, default: "/map"),robot_base_frame (string,default: "base_link")，transform_tolerance (double, default: 0.2)
+
+2）Rate parameters
+
+update_frequency (double, default:5.0),publish_frequency (double, default: 0.0)
+
+3）Map management parameters
+
+rolling_window (bool, default: false)
+
+The following parameters can beoverwritten by some layers, namely the static map layer.
+
+width (int,),height(int),resolution(double),origin_x (double),origin_y(double)
+
+（3）costmap_common_params.yaml
+
+obstacle_range,raytrace_range,footprint,robot_radius,inflation_radius
+
+observation_sources:laser_scan_sensor point_cloud_sensor
+
+laser_scan_sensor:{sensor_frame: frame_name, data_type: LaserScan, topic: topic_name, marking:true, clearing: true}
+
+point_cloud_sensor:{sensor_frame: frame_name, data_type: PointCloud, topic: topic_name, marking:true, clearing: true}
+
+        对于导航规划层来说，整个系统的表现与实时性息息相关。制约表现好坏的最重要一部分就是costmap的生成。costmap会分别生成两份，一个是global_costmap ，另一个是local_costmap，这两份的参数是完全不同的。local_costmap，local_planner要求的实时性还是挺高的（特别是你把速度调高的时候），而local_costmap 所依赖的全局坐标系一般是odom，绘制costmap的时候会反复询问odom->base_link frame的信息，tf数据延迟要是大了会影响costmap，进而导致机器人planner实时性降低，机器人移动迟缓或者撞上障碍物。所以有个参数transform_tolerance一定要慎重。如果是使用静态先验地图做导航，那么全局的costmap可以选择使用static_map选项，这 样的话在move_base 创建之初就会根据先验地图生成一次，以后不会再更新了。这样会节省一些计算量。
+
+       而如果采用动态地图（实时slam出来的）或者根本不使用先验地图，那可以将全局的costmap所依赖的全局坐标系也改为odom，rolling_window选项代替static选项，这样costmap就会实时更新，要注意的是这样的话你上层程序给出的目标点就不能超过 rolling_window的范围。
+
+       总结：goal_tolerance，frequency，resolution ，obstacle_range，raytrace_range， pdist_scale，transform_tolerance等参数都是非常关键的，需要注意地图的分辨率以及各种频率，到达目标和轨迹的tolerance,这些都会影响整个系统的性能。
+
+       笔者所用的平台为p3-dx，底层已经封装好了。在调试过程中会不断积累经验，导航中遇到的问题大概有这五个部分，希望对大家有帮助。笔者还在前进中，很多东西不完善，欢迎多多交流。
