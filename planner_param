@@ -2,11 +2,15 @@ global_planner
 Parameters
 ~<name>/allow_unknown (bool, default: true)
 
-    Specifies whether or not to allow the planner to create plans that traverse unknown space. NOTE: if you are using a layered costmap_2d costmap with a voxel or obstacle layer, you must also set the track_unknown_space param for that layer to be true, or it will convert all your unknown space to free space (which planner will then happily go right through). 
+    Specifies whether or not to allow the planner to create plans that traverse unknown space. NOTE: if you are using a 
+    layered costmap_2d costmap with a voxel or obstacle layer, you must also set the track_unknown_space param for that 
+    layer to be true, or it will convert all your unknown space to free space (which planner will then happily go right 
+    through). 
 
 ~<name>/default_tolerance (double, default: 0.0)
 
-    A tolerance on the goal point for the planner. The planner will attempt to create a plan that is as close to the specified goal as possible but no further than default_tolerance away. 
+    A tolerance on the goal point for the planner. The planner will attempt to create a plan that is as close to the 
+    specified goal as possible but no further than default_tolerance away. 
 
 ~<name>/visualize_potential (bool, default: false)
 
@@ -26,7 +30,8 @@ Parameters
 
 ~<name>/old_navfn_behavior (bool, default: false)
 
-    If for some reason, you want global_planner to exactly mirror the behavior of navfn, set this to true (and use the defaults for the other boolean parameters) 
+    If for some reason, you want global_planner to exactly mirror the behavior of navfn, set this to true (and use the 
+    defaults for the other boolean parameters) 
 
 ~<name>/lethal_cost (int, default: 253)
 
@@ -46,16 +51,20 @@ Parameters
 
 ~<name>/orientation_mode (int, default: 0)
 
-    How to set the orientation of each point (None=0, Forward=1, Interpolate=2, ForwardThenInterpolate=3, Backward=4, Leftward=5, Rightward=6) (dynamic reconfigure) 
+    How to set the orientation of each point (None=0, Forward=1, Interpolate=2, ForwardThenInterpolate=3, Backward=4, 
+    Leftward=5, Rightward=6) (dynamic reconfigure) 
 
 ~<name>/orientation_window_size (int, default: 1)
 
-    What window to use to determine the orientation based on the position derivative specified by the orientation mode (dynamic reconfigure) 
+    What window to use to determine the orientation based on the position derivative specified by the orientation mode 
+    (dynamic reconfigure) 
     
     base_local_planner
     Parameters
 
-There are a large number of ROS Parameters that can be set to customize the behavior of the base_local_planner::TrajectoryPlannerROS wrapper. These parameters are grouped into several categories: robot configuration, goal tolerance, forward simulation, trajectory scoring, oscillation prevention, and global plan.
+There are a large number of ROS Parameters that can be set to customize the behavior of 
+the base_local_planner::TrajectoryPlannerROS wrapper. These parameters are grouped into several categories: robot 
+configuration, goal tolerance, forward simulation, trajectory scoring, oscillation prevention, and global plan.
 
 Robot Configuration Parameters
 
@@ -77,7 +86,8 @@ Robot Configuration Parameters
 
 ~<name>/min_vel_x (double, default: 0.1)
 
-    The minimum forward velocity allowed for the base in meters/sec. It is useful to specify this to guarantee that velocity commands sent to a mobile base are high enough to allow the base to overcome friction. 
+    The minimum forward velocity allowed for the base in meters/sec. It is useful to specify this to guarantee 
+    that velocity commands sent to a mobile base are high enough to allow the base to overcome friction. 
 
 ~<name>/max_vel_theta (double, default: 1.0)
 
@@ -93,15 +103,21 @@ Robot Configuration Parameters
 
 ~<name>/backup_vel (double, default: -0.1)
 
-    DEPRECATED (use escape_vel):Speed used for backing up during escapes in meters/sec. Note that it must be negative in order for the robot to actually reverse. A positive speed will cause the robot to move forward while attempting to escape. 
+    DEPRECATED (use escape_vel):Speed used for backing up during escapes in meters/sec. Note that it must be 
+    negative in order for the robot to actually reverse. A positive speed will cause the robot to move forward 
+    while attempting to escape. 
 
 ~<name>/escape_vel (double, default: -0.1)
 
-    Speed used for driving during escapes in meters/sec. Note that it must be negative in order for the robot to actually reverse. A positive speed will cause the robot to move forward while attempting to escape. New in navigation 1.3.1 
+    Speed used for driving during escapes in meters/sec. Note that it must be negative in order for the robot 
+    to actually reverse. A positive speed will cause the robot to move forward while attempting to escape. 
+    New in navigation 1.3.1 
 
 ~<name>/holonomic_robot (bool, default: true)
 
-    Determines whether velocity commands are generated for a holonomic or non-holonomic robot. For holonomic robots, strafing velocity commands may be issued to the base. For non-holonomic robots, no strafing velocity commands will be issued. 
+    Determines whether velocity commands are generated for a holonomic or non-holonomic robot. For holonomic 
+    robots, strafing velocity commands may be issued to the base. For non-holonomic robots, no strafing velocity 
+    commands will be issued. 
 
 The following parameters are only used if holonomic_robot is set to true:
 
@@ -121,7 +137,8 @@ Goal Tolerance Parameters
 
 ~<name>/latch_xy_goal_tolerance (bool, default: false)
 
-    If goal tolerance is latched, if the robot ever reaches the goal xy location it will simply rotate in place, even if it ends up outside the goal tolerance while it is doing so. - New in navigation 1.3.1 
+    If goal tolerance is latched, if the robot ever reaches the goal xy location it will simply rotate in place, 
+    even if it ends up outside the goal tolerance while it is doing so. - New in navigation 1.3.1 
 
 Forward Simulation Parameters
 
@@ -147,20 +164,25 @@ Forward Simulation Parameters
 
 ~<name>/controller_frequency (double, default: 20.0)
 
-    The frequency at which this controller will be called in Hz. Uses searchParam to read the parameter from parent namespaces if not set in the namespace of the controller. For use with move_base, this means that you only need to set its "controller_frequency" parameter and can safely leave this one unset. - New in navigation 1.3.1 
+    The frequency at which this controller will be called in Hz. Uses searchParam to read the parameter from parent 
+    namespaces if not set in the namespace of the controller. For use with move_base, this means that you only need 
+    to set its "controller_frequency" parameter and can safely leave this one unset. - New in navigation 1.3.1 
 
 Trajectory Scoring Parameters
 
 The cost function used to score each trajectory is in the following form:
 
 cost = 
-  pdist_scale * (distance to path from the endpoint of the trajectory in map cells or meters depending on the meter_scoring parameter) 
-  + gdist_scale * (distance to local goal from the endpoint of the trajectory in map cells or meters depending on the meter_scoring parameter) 
+  pdist_scale * (distance to path from the endpoint of the trajectory in map cells or meters depending on the 
+  meter_scoring parameter) 
+  + gdist_scale * (distance to local goal from the endpoint of the trajectory in map cells or meters depending 
+  on the meter_scoring parameter) 
   + occdist_scale * (maximum obstacle cost along the trajectory in obstacle cost (0-254))
 
 ~<name>/meter_scoring (bool, default: false)
 
-    Whether the gdist_scale and pdist_scale parameters should assume that goal_distance and path_distance are expressed in units of meters or cells. Cells are assumed by default. New in navigation 1.3.1 
+    Whether the gdist_scale and pdist_scale parameters should assume that goal_distance and path_distance are expressed 
+    in units of meters or cells. Cells are assumed by default. New in navigation 1.3.1 
 
 ~<name>/pdist_scale (double, default: 0.6)
 
@@ -168,7 +190,8 @@ cost =
 
 ~<name>/gdist_scale (double, default: 0.8)
 
-    The weighting for how much the controller should attempt to reach its local goal, also controls speed, maximal possible value is 5.0 
+    The weighting for how much the controller should attempt to reach its local goal, also controls speed, maximal 
+    possible value is 5.0 
 
 ~<name>/occdist_scale (double, default: 0.01)
 
@@ -188,15 +211,21 @@ cost =
 
 ~<name>/dwa (bool, default: true)
 
-    Whether to use the Dynamic Window Approach (DWA)_ or whether to use Trajectory Rollout (NOTE: In our experience DWA worked as well as Trajectory Rollout and is computationally less expensive. It is possible that robots with extremely poor acceleration limits could gain from running Trajectory Rollout, but we recommend trying DWA first.) 
+    Whether to use the Dynamic Window Approach (DWA)_ or whether to use Trajectory Rollout (NOTE: In our experience 
+    DWA worked as well as Trajectory Rollout and is computationally less expensive. It is possible that robots with 
+    extremely poor acceleration limits could gain from running Trajectory Rollout, but we recommend trying DWA first.) 
 
 ~<name>/publish_cost_grid_pc (bool, default: false)
 
-    Whether or not to publish the cost grid that the planner will use when planning. When true, a sensor_msgs/PointCloud2 will be available on the ~<name>/cost_cloud topic. Each point cloud represents the cost grid and has a field for each individual scoring function component as well as the overall cost for each cell, taking the scoring parameters into account. New in navigation 1.4.0 
+    Whether or not to publish the cost grid that the planner will use when planning. When true, a 
+    sensor_msgs/PointCloud2 will be available on the ~<name>/cost_cloud topic. Each point cloud represents the cost 
+    grid and has a field for each individual scoring function component as well as the overall cost for each cell, 
+    taking the scoring parameters into account. New in navigation 1.4.0 
 
 ~<name>/global_frame_id (string, default: odom)
 
-    The frame to set for the cost_cloud. Should be set to the same frame as the local costmap's global frame. New in navigation 1.4.0 
+    The frame to set for the cost_cloud. Should be set to the same frame as the local costmap's global frame. New 
+    in navigation 1.4.0 
 
 Oscillation Prevention Parameters
 
@@ -208,9 +237,12 @@ Global Plan Parameters
 
 ~<name>/prune_plan (bool, default: true)
 
-    Defines whether or not to eat up the plan as the robot moves along the path. If set to true, points will fall off the end of the plan once the robot moves 1 meter past them. 
+    Defines whether or not to eat up the plan as the robot moves along the path. If set to true, points will fall off 
+    the end of the plan once the robot moves 1 meter past them. 
 
 TrajectoryPlanner
 
-The base_local_planner::TrajectoryPlanner provides implementations of the DWA and Trajectory Rollout algorithms described earlier. In order to use the base_local_planner::TrajectoryPlanner with ROS, please use the TrajectoryPlannerROS wrapper. It is not recommended to use the base_local_planner::TrajectoryPlanner on its own.
+The base_local_planner::TrajectoryPlanner provides implementations of the DWA and Trajectory Rollout algorithms described 
+earlier. In order to use the base_local_planner::TrajectoryPlanner with ROS, please use the TrajectoryPlannerROS wrapper. 
+It is not recommended to use the base_local_planner::TrajectoryPlanner on its own.
 
