@@ -59,7 +59,8 @@ Goal Tolerance Parameters
 
 ~<name>/latch_xy_goal_tolerance (bool, default: false)
 
-    If goal tolerance is latched, if the robot ever reaches the goal xy location it will simply rotate in place, even if it ends up outside the goal tolerance while it is doing so. 
+    If goal tolerance is latched, if the robot ever reaches the goal xy location it will simply 
+    rotate in place, even if it ends up outside the goal tolerance while it is doing so. 
 
 Forward Simulation Parameters
 
@@ -85,7 +86,9 @@ Forward Simulation Parameters
 
 ~<name>/controller_frequency (double, default: 20.0)
 
-    The frequency at which this controller will be called in Hz. Uses searchParam to read the parameter from parent namespaces if not set in the namespace of the controller. For use with move_base, this means that you only need to set its "controller_frequency" parameter and can safely leave this one unset. 
+    The frequency at which this controller will be called in Hz. Uses searchParam to read the parameter 
+    from parent namespaces if not set in the namespace of the controller. For use with move_base, this 
+    means that you only need to set its "controller_frequency" parameter and can safely leave this one unset. 
 
 Trajectory Scoring Parameters
 
@@ -114,7 +117,8 @@ cost =
 
 ~<name>/stop_time_buffer (double, default: 0.2)
 
-    The amount of time that the robot must stop before a collision in order for a trajectory to be considered valid in seconds 
+    The amount of time that the robot must stop before a collision in order for a trajectory to be considered 
+    valid in seconds 
 
 ~<name>/scaling_speed (double, default: 0.25)
 
@@ -126,7 +130,10 @@ cost =
 
 ~<name>/publish_cost_grid (bool, default: false)
 
-    Whether or not to publish the cost grid that the planner will use when planning. When true, a sensor_msgs/PointCloud2 will be available on the ~<name>/cost_cloud topic. Each point cloud represents the cost grid and has a field for each individual scoring function component as well as the overall cost for each cell, taking the scoring parameters into account. 
+    Whether or not to publish the cost grid that the planner will use when planning. When true, a 
+    sensor_msgs/PointCloud2 will be available on the ~<name>/cost_cloud topic. Each point cloud represents 
+    the cost grid and has a field for each individual scoring function component as well as the overall cost 
+    for each cell, taking the scoring parameters into account. 
 
 Oscillation Prevention Parameters
 
@@ -138,22 +145,36 @@ Global Plan Parameters
 
 ~<name>/prune_plan (bool, default: true)
 
-    Defines whether or not to eat up the plan as the robot moves along the path. If set to true, points will fall off the end of the plan once the robot moves 1 meter past them. 
+    Defines whether or not to eat up the plan as the robot moves along the path. If set to true, points will 
+    fall off the end of the plan once the robot moves 1 meter past them. 
     
     move_base
     
     Parameters
 ~base_global_planner (string, default: "navfn/NavfnROS" For 1.1+ series)
 
-    The name of the plugin for the global planner to use with move_base, see pluginlib documentation for more details on plugins. This plugin must adhere to the nav_core::BaseGlobalPlanner interface specified in the nav_core package. (1.0 series default: "NavfnROS") 
+    The name of the plugin for the global planner to use with move_base, see pluginlib documentation for more 
+    details on plugins. This plugin must adhere to the nav_core::BaseGlobalPlanner interface specified in the 
+    nav_core package. (1.0 series default: "NavfnROS") 
 
 ~base_local_planner (string, default: "base_local_planner/TrajectoryPlannerROS" For 1.1+ series)
 
-    The name of the plugin for the local planner to use with move_base see pluginlib documentation for more details on plugins. This plugin must adhere to the nav_core::BaseLocalPlanner interface specified in the nav_core package. (1.0 series default: "TrajectoryPlannerROS") 
+    The name of the plugin for the local planner to use with move_base see pluginlib documentation for more 
+    details on plugins. This plugin must adhere to the nav_core::BaseLocalPlanner interface specified in the 
+    nav_core package. (1.0 series default: "TrajectoryPlannerROS") 
 
-~recovery_behaviors (list, default: [{name: conservative_reset, type: clear_costmap_recovery/ClearCostmapRecovery}, {name: rotate_recovery, type: rotate_recovery/RotateRecovery}, {name: aggressive_reset, type: clear_costmap_recovery/ClearCostmapRecovery}] For 1.1+ series)
+~recovery_behaviors (list, default: [{name: conservative_reset, type: clear_costmap_recovery/ClearCostmapRecovery}, 
+{name: rotate_recovery, type: rotate_recovery/RotateRecovery}, {name: aggressive_reset, 
+type: clear_costmap_recovery/ClearCostmapRecovery}] For 1.1+ series)
 
-    A list of recovery behavior plugins to use with move_base, see pluginlib documentation for more details on plugins. These behaviors will be run when move_base fails to find a valid plan in the order that they are specified. After each behavior completes, move_base will attempt to make a plan. If planning is successful, move_base will continue normal operation. Otherwise, the next recovery behavior in the list will be executed. These plugins must adhere to the nav_core::RecoveryBehavior interface specified in the nav_core package. (1.0 series default: [{name: conservative_reset, type: ClearCostmapRecovery}, {name: rotate_recovery, type: RotateRecovery}, {name: aggressive_reset, type: ClearCostmapRecovery}]). Note: For the default parameters, the aggressive_reset behavior will clear out to a distance of 4 * ~/local_costmap/circumscribed_radius. 
+    A list of recovery behavior plugins to use with move_base, see pluginlib documentation for more details on plugins. 
+    These behaviors will be run when move_base fails to find a valid plan in the order that they are specified. After 
+    each behavior completes, move_base will attempt to make a plan. If planning is successful, move_base will continue 
+    normal operation. Otherwise, the next recovery behavior in the list will be executed. These plugins must adhere to 
+    the nav_core::RecoveryBehavior interface specified in the nav_core package. (1.0 series default: [{name: 
+    conservative_reset, type: ClearCostmapRecovery}, {name: rotate_recovery, type: RotateRecovery}, {name: 
+    aggressive_reset, type: ClearCostmapRecovery}]). Note: For the default parameters, the aggressive_reset behavior 
+    will clear out to a distance of 4 * ~/local_costmap/circumscribed_radius. 
 
 ~controller_frequency (double, default: 20.0)
 
@@ -161,15 +182,19 @@ Global Plan Parameters
 
 ~planner_patience (double, default: 5.0)
 
-    How long the planner will wait in seconds in an attempt to find a valid plan before space-clearing operations are performed. 
+    How long the planner will wait in seconds in an attempt to find a valid plan before space-clearing operations 
+    are performed. 
 
 ~controller_patience (double, default: 15.0)
 
-    How long the controller will wait in seconds without receiving a valid control before space-clearing operations are performed. 
+    How long the controller will wait in seconds without receiving a valid control before space-clearing operations 
+    are performed. 
 
 ~conservative_reset_dist (double, default: 3.0)
 
-    The distance away from the robot in meters beyond which obstacles will be cleared from the costmap when attempting to clear space in the map. Note, this parameter is only used when the default recovery behaviors are used for move_base. 
+    The distance away from the robot in meters beyond which obstacles will be cleared from the costmap when 
+    attempting to clear space in the map. Note, this parameter is only used when the default recovery behaviors 
+    are used for move_base. 
 
 ~recovery_behavior_enabled (bool, default: true)
 
@@ -177,7 +202,9 @@ Global Plan Parameters
 
 ~clearing_rotation_allowed (bool, default: true)
 
-    Determines whether or not the robot will attempt an in-place rotation when attempting to clear out space. Note: This parameter is only used when the default recovery behaviors are in use, meaning the user has not set the recovery_behaviors parameter to anything custom. 
+    Determines whether or not the robot will attempt an in-place rotation when attempting to clear out space. 
+    Note: This parameter is only used when the default recovery behaviors are in use, meaning the user has not 
+    set the recovery_behaviors parameter to anything custom. 
 
 ~shutdown_costmaps (bool, default: false)
 
@@ -185,31 +212,40 @@ Global Plan Parameters
 
 ~oscillation_timeout (double, default: 0.0)
 
-    How long in seconds to allow for oscillation before executing recovery behaviors. A value of 0.0 corresponds to an infinite timeout. New in navigation 1.3.1 
+    How long in seconds to allow for oscillation before executing recovery behaviors. A value of 0.0 corresponds 
+    to an infinite timeout. New in navigation 1.3.1 
 
 ~oscillation_distance (double, default: 0.5)
 
-    How far in meters the robot must move to be considered not to be oscillating. Moving this far resets the timer counting up to the ~oscillation_timeout New in navigation 1.3.1 
+    How far in meters the robot must move to be considered not to be oscillating. Moving this far resets the timer 
+    counting up to the ~oscillation_timeout New in navigation 1.3.1 
 
 ~planner_frequency (double, default: 0.0)
 
-    The rate in Hz at which to run the global planning loop. If the frequency is set to 0.0, the global planner will only run when a new goal is received or the local planner reports that its path is blocked. New in navigation 1.6.0 
+    The rate in Hz at which to run the global planning loop. If the frequency is set to 0.0, the global planner will 
+    only run when a new goal is received or the local planner reports that its path is blocked. New in navigation 1.6.0 
 
 ~max_planning_retries (int32_t, default: -1)
 
-    How many times to allow for planning retries before executing recovery behaviors. A value of -1.0 corresponds to an infinite retries. 
+    How many times to allow for planning retries before executing recovery behaviors. A value of -1.0 corresponds to an 
+    infinite retries. 
     
     costmap_2d
     
     Pre-Hydro Parameters
 
-Hydro and later releases use plugins for all costmap_2d layers. If you don't provide a plugins parameter then the initialization code will assume that your configuration is pre-Hydro and will load a default set of plugins with default namespaces. Your parameters will be moved to the new namespaces automagically. The default namespaces are static_layer, obstacle_layer and inflation_layer. Some tutorials (and books) still refer to pre-Hydro parameters, so pay close attention. To be safe, be sure to provide a plugins parameter.
+Hydro and later releases use plugins for all costmap_2d layers. If you don't provide a plugins parameter then the 
+initialization code will assume that your configuration is pre-Hydro and will load a default set of plugins with 
+default namespaces. Your parameters will be moved to the new namespaces automagically. The default namespaces are 
+static_layer, obstacle_layer and inflation_layer. Some tutorials (and books) still refer to pre-Hydro parameters, 
+so pay close attention. To be safe, be sure to provide a plugins parameter.
 
 Plugins
 
 ~<name>/plugins (sequence, default: pre-Hydro behavior)
 
-    Sequence of plugin specifications, one per layer. Each specification is a dictionary with name and type fields. The name is used to define the parameter namespace for the plugin. See the tutorials for examples. 
+    Sequence of plugin specifications, one per layer. Each specification is a dictionary with name and type fields. 
+    The name is used to define the parameter namespace for the plugin. See the tutorials for examples. 
 
 Coordinate frame and tf parameters
 
@@ -223,7 +259,11 @@ Coordinate frame and tf parameters
 
 ~<name>/transform_tolerance (double, default: 0.2)
 
-    Specifies the delay in transform (tf) data that is tolerable in seconds. This parameter serves as a safeguard to losing a link in the tf tree while still allowing an amount of latency the user is comfortable with to exist in the system. For example, a transform being 0.2 seconds out-of-date may be tolerable, but a transform being 8 seconds out of date is not. If the tf transform between the coordinate frames specified by the global_frame and robot_base_frame parameters is transform_tolerance seconds older than ros::Time::now(), then the navigation stack will stop the robot. 
+    Specifies the delay in transform (tf) data that is tolerable in seconds. This parameter serves as a safeguard to 
+    losing a link in the tf tree while still allowing an amount of latency the user is comfortable with to exist in 
+    the system. For example, a transform being 0.2 seconds out-of-date may be tolerable, but a transform being 8 seconds 
+    out of date is not. If the tf transform between the coordinate frames specified by the global_frame and robot_base_frame 
+    parameters is transform_tolerance seconds older than ros::Time::now(), then the navigation stack will stop the robot. 
 
 Rate parameters
 
@@ -239,11 +279,13 @@ Map management parameters
 
 ~<name>/rolling_window (bool, default: false)
 
-    Whether or not to use a rolling window version of the costmap. If the static_map parameter is set to true, this parameter must be set to false. 
+    Whether or not to use a rolling window version of the costmap. If the static_map parameter is set to true, this 
+    parameter must be set to false. 
 
 ~<name>/always_send_full_costmap (bool, default: false)
 
-    If true the full costmap is published to "~<name>/costmap" every update. If false only the part of the costmap that has changed is published on the "~<name>/costmap_updates" topic. 
+    If true the full costmap is published to "~<name>/costmap" every update. If false only the part of the costmap 
+    that has changed is published on the "~<name>/costmap_updates" topic. 
 
 The following parameters can be overwritten by some layers, namely the static map layer.
 
@@ -273,7 +315,8 @@ Each source_name in observation_sources defines a namespace in which parameters 
 
 ~<name>/<source_name>/sensor_frame (string, default: "")
 
-    The frame of the origin of the sensor. Leave empty to attempt to read the frame from sensor data. The frame can be read from both sensor_msgs/LaserScan, sensor_msgs/PointCloud, and sensor_msgs/PointCloud2 messages. 
+    The frame of the origin of the sensor. Leave empty to attempt to read the frame from sensor data. The frame can be 
+    read from both sensor_msgs/LaserScan, sensor_msgs/PointCloud, and sensor_msgs/PointCloud2 messages. 
 
 ~<name>/<source_name>/observation_persistence (double, default: 0.0)
 
@@ -281,7 +324,11 @@ Each source_name in observation_sources defines a namespace in which parameters 
 
 ~<name>/<source_name>/expected_update_rate (double, default: 0.0)
 
-    How often to expect a reading from a sensor in seconds. A value of 0.0 will allow infinite time between readings. This parameter is used as a failsafe to keep the navigation stack from commanding the robot when a sensor has failed. It should be set to a value that is slightly more permissive than the actual rate of the sensor. For example, if we expect a scan from a laser every 0.05 seconds we might set this parameter to be 0.1 seconds to give a generous buffer and account for some amount of system latency. 
+    How often to expect a reading from a sensor in seconds. A value of 0.0 will allow infinite time between readings. 
+    This parameter is used as a failsafe to keep the navigation stack from commanding the robot when a sensor has failed. 
+    It should be set to a value that is slightly more permissive than the actual rate of the sensor. For example, if we 
+    expect a scan from a laser every 0.05 seconds we might set this parameter to be 0.1 seconds to give a generous buffer 
+    and account for some amount of system latency. 
 
 ~<name>/<source_name>/data_type (string, default: "PointCloud")
 
@@ -297,11 +344,15 @@ Each source_name in observation_sources defines a namespace in which parameters 
 
 ~<name>/<source_name>/max_obstacle_height (double, default: 2.0)
 
-    The maximum height in meters of a sensor reading considered valid. This is usually set to be slightly higher than the height of the robot. Setting this parameter to a value greater than the global max_obstacle_height parameter has no effect. Setting this parameter to a value less than the global max_obstacle_height will filter out points from this sensor above that height. 
+    The maximum height in meters of a sensor reading considered valid. This is usually set to be slightly higher than 
+    the height of the robot. Setting this parameter to a value greater than the global max_obstacle_height parameter 
+    has no effect. Setting this parameter to a value less than the global max_obstacle_height will filter out points 
+    from this sensor above that height. 
 
 ~<name>/<source_name>/min_obstacle_height (double, default: 0.0)
 
-    The minimum height in meters of a sensor reading considered valid. This is usually set to be at ground height, but can be set higher or lower based on the noise model of your sensor. 
+    The minimum height in meters of a sensor reading considered valid. This is usually set to be at ground height, 
+    but can be set higher or lower based on the noise model of your sensor. 
 
 ~<name>/<source_name>/obstacle_range (double, default: 2.5)
 
@@ -321,15 +372,18 @@ These parameters apply to all sensors.
 
 ~<name>/max_obstacle_height (double, default: 2.0)
 
-    The maximum height of any obstacle to be inserted into the costmap in meters. This parameter should be set to be slightly higher than the height of your robot. 
+    The maximum height of any obstacle to be inserted into the costmap in meters. This parameter should be set to be 
+    slightly higher than the height of your robot. 
 
 ~<name>/obstacle_range (double, default: 2.5)
 
-    The default maximum distance from the robot at which an obstacle will be inserted into the cost map in meters. This can be over-ridden on a per-sensor basis. 
+    The default maximum distance from the robot at which an obstacle will be inserted into the cost map in meters. This 
+    can be over-ridden on a per-sensor basis. 
 
 ~<name>/raytrace_range (double, default: 3.0)
 
-    The default range in meters at which to raytrace out obstacles from the map using sensor data. This can be over-ridden on a per-sensor basis. 
+    The default range in meters at which to raytrace out obstacles from the map using sensor data. This can be over-ridden 
+    on a per-sensor basis. 
 
 ObstacleCostmapPlugin
 
@@ -337,7 +391,8 @@ These parameters are used by the ObstacleCostmapPlugin.
 
 ~<name>/track_unknown_space (bool, default: false)
 
-    If false, each pixel has one of 2 states: lethal obstacle or free. If true, each pixel has one of 3 states: lethal obstacle, free, or unknown. 
+    If false, each pixel has one of 2 states: lethal obstacle or free. If true, each pixel has one of 3 states: lethal 
+    obstacle, free, or unknown. 
 
 ~<name>/footprint_clearing_enabled (bool, default: true)
 
@@ -345,9 +400,14 @@ These parameters are used by the ObstacleCostmapPlugin.
 
 ~<name>/combination_method (enum, default: 1)
 
-    Changes the behaviour how the obstacle_layer handles incoming data from layers beyond it. Possible values are "Overwrite" (0), "Maximum" (1) and "Nothing" (99). "Overwrite" simply overwrites the data below, i.e. they are not used. "Maximum" is what you want most of the times. It takes the maximum of what is supplied in the obstacle_layer or the incoming data. "Nothing" doesn't change the incoming data at all. Note that this highly influences how the costmap behaves, depending on your setting of track_unkown_space. 
+    Changes the behaviour how the obstacle_layer handles incoming data from layers beyond it. Possible values are 
+    "Overwrite" (0), "Maximum" (1) and "Nothing" (99). "Overwrite" simply overwrites the data below, i.e. they are not 
+    used. "Maximum" is what you want most of the times. It takes the maximum of what is supplied in the obstacle_layer 
+    or the incoming data. "Nothing" doesn't change the incoming data at all. Note that this highly influences how the 
+    costmap behaves, depending on your setting of track_unkown_space. 
 
-For a discussion of the influence of the combination_method and track_unknown_space parameters, see this related discussion on ROS answers: https://answers.ros.org/question/316191
+For a discussion of the influence of the combination_method and track_unknown_space parameters, see this related 
+discussion on ROS answers: https://answers.ros.org/question/316191
 
 VoxelCostmapPlugin
 
@@ -383,7 +443,10 @@ The following parameters are used by the VoxelCostmapPlugin.
 
 ObservationBuffer
 
-An costmap_2d::ObservationBuffer is used to take in point clouds from sensors, transform them to the desired coordinate frame using tf, and store them until they are requested. Most users will have creation of costmap_2d::ObservationBuffers handled automatically by a costmap_2d::Costmap2DROS object, but those with special needs may choose to create their own. 
+An costmap_2d::ObservationBuffer is used to take in point clouds from sensors, transform them to the 
+desired coordinate frame using tf, and store them until they are requested. Most users will have creation 
+of costmap_2d::ObservationBuffers handled automatically by a costmap_2d::Costmap2DROS object, but those with 
+special needs may choose to create their own. 
 
 /inflation
 Parameters
@@ -394,7 +457,12 @@ Parameters
 
 ~<name>/cost_scaling_factor (double, default: 10.0)
 
-    A scaling factor to apply to cost values during inflation. The cost function is computed as follows for all cells in the costmap further than the inscribed radius distance and closer than the inflation radius distance away from an actual obstacle: exp(-1.0 * cost_scaling_factor * (distance_from_obstacle - inscribed_radius)) * (costmap_2d::INSCRIBED_INFLATED_OBSTACLE - 1), where costmap_2d::INSCRIBED_INFLATED_OBSTACLE is currently 254. NOTE: since the cost_scaling_factor is multiplied by a negative in the formula, increasing the factor will decrease the resulting cost values. 
+    A scaling factor to apply to cost values during inflation. The cost function is computed as follows for 
+    all cells in the costmap further than the inscribed radius distance and closer than the inflation radius 
+    distance away from an actual obstacle: 
+    exp(-1.0 * cost_scaling_factor * (distance_from_obstacle - inscribed_radius)) * (costmap_2d::INSCRIBED_INFLATED_OBSTACLE - 1),
+    where costmap_2d::INSCRIBED_INFLATED_OBSTACLE is currently 254. NOTE: since the cost_scaling_factor is multiplied by a 
+    negative in the formula, increasing the factor will decrease the resulting cost values. 
     
     
         
