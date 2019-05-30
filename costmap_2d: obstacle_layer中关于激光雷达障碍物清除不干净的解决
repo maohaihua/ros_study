@@ -1,7 +1,16 @@
 costmap_2d: obstacle_layer中关于激光雷达障碍物清除不干净的解决
 
 https://blog.csdn.net/xinmei4275/article/details/88760505
-
+---------------------
+作者：Bobsweetie
+来源：CSDN
+原文：https://blog.csdn.net/Bobsweetie/article/details/70194416
+版权声明：本文为博主原创文章，转载请附上博文链接！
+---------------------
+作者：shawfy-
+来源：CSDN
+原文：https://blog.csdn.net/xinmei4275/article/details/88760505
+版权声明：本文为博主原创文章，转载请附上博文链接！
     参考：
 
         ROS naviagtion analysis: costmap_2d–ObstacleLayer
