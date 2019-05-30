@@ -1,0 +1,173 @@
+costmap_2d: obstacle_layer中关于激光雷达障碍物清除不干净的解决
+
+https://blog.csdn.net/xinmei4275/article/details/88760505
+
+    参考：
+
+        ROS naviagtion analysis: costmap_2d–ObstacleLayer
+        ROS Navigation Stack之costmap_2d源码分析
+        ROS 中obstacle_layer由于激光雷达测距的局限性，导致costmap中障碍物不能被及时清除。
+
+总的来说是，使用navigation导航时，会出现由于激光雷达测距的局限性， 会导致costmap上有行人走过，代价地图中的障碍物，无法被及时的清除，留下影子一样的轨迹。
+--------------------- 
+作者：shawfy- 
+来源：CSDN 
+原文：https://blog.csdn.net/xinmei4275/article/details/88760505 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+具体细分可以分为两点：
+
+    激光雷达无法测到距离时（太远或者激光被折射了，对面是个镜子等），返回值不是inf(无穷值。在32位的浮点型数据中，当数位都为1时，表示数值无穷大。);
+    激光雷达分辨率不够（或者说是地图分辨率高于激光雷达分辨率）
+
+1. 修改激光雷达返回值
+
+国内一些比较便宜的激光雷达，在未测到数据时，返回的是0.0 或者激光雷达默认的最大值。
+当有行人走过时，机器人的附近会留下一些之前的图中蓝色的障碍点，这将会影响后续的导航和壁障.
+解决方案就是修改costmap_2D中对于激光雷达数据的处理,
+如果返回值为0，则设置为比最大值小一点点。
+
+void ObstacleLayer::laserScanValidInfCallback(const sensor_msgs::LaserScanConstPtr& raw_message,
+                                              const boost::shared_ptr<ObservationBuffer>& buffer)
+{
+  // Filter positive infinities ("Inf"s) to max_range.
+  float epsilon = 0.0001;  // a tenth of a millimeter
+  sensor_msgs::LaserScan message = *raw_message;
+  for (size_t i = 0; i < message.ranges.size(); i++)
+  {
+    float range = message.ranges[ i ];
+    // /修改该地方，因为我的雷达没数据时，返回零值，所以判断当距离等于时，作为无穷远点来处理。
+   // if (!std::isfinite(range) && range > 0)  原始代码
+    if ((!std::isfinite(range) && range > 0) || (range == 0.0))
+    {
+      message.ranges[ i ] = message.range_max - epsilon;
+    }
+  }
+
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
+    9
+    10
+    11
+    12
+    13
+    14
+    15
+    16
+
+这里有一点需要说明：需要在在costmap_common_params.yaml中 配置 inf_is_valid: true,
+
+scan: {data_type: LaserScan, 
+        topic: /scan, 
+        marking: true, 
+        clearing: true,
+        inf_is_valid: true,
+        observation_keep_time: 0.0, 
+        expected_update_rate: 0 }
+
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+
+2. 地图分辨率高于激光雷达分辨率
+
+在costmap_common_params.yaml中有两个配置参数
+
+obstacle_range: 2.5  //只有障碍物在这个范围内才会被标记
+raytrace_range: 3    //这个范围内不存在的障碍物都会被清除
+
+    1
+    2
+
+当raytrace_range = 3， 而激光雷达是360度每一度一个采样点时，这是距离激光雷达处每个采样点之间的距离大约是0.052, 也就是说如果地图的分辨率时0.01的话，如果很靠近激光雷达采样点如果有一个障碍物点，但是始终在激光雷达两条采样线（从激光雷达远点到采样点之间的线段）之间的话，也就是始终没有扫描到的话，那这个点讲始终无法被清除掉。
+解决方案一：
+
+花点钱每个好点的激光雷达，分辨率高点
+
+    1
+
+解决方案二：
+
+修改cosmap_2D中关于清除点规则
+
+    1
+
+ObstacleLayer
+
+参考文章1,2中有详细分析ObstacleLayer中的代码结构与逻辑，不赘述。
+需要明确一点的是，这里使用光线跟踪 raytraceFreespace清除障碍物
+
+        raytraceLine(marker, x0, y0, x1, y1, cell_raytrace_range); 会将所有在(x0,y0)>>(x1,y1)之间的所有cell标记为FREE_SPACE。
+        而updateRaytraceBounds 会根据测量的距离，更新扩张（min_x, min_y, max_x, max_y）。
+        updateBounds 在根据测量数据完成clear 操作之后，就开始了mark 操作，对每个测量到的点，标记为obstacle ：
+
+基本逻辑如下图所示
+在这里插入图片描述
+所以如果我们想要清除比分辨率比激光雷达高的地图上的点，一种方式就认为在检测范围内（这里是3x3)不存在比激光雷达分辨率（0.052）小的障碍物，所以所有激光雷达相邻扫描线之间的障碍点都应该被清除。简单点就是在每个激光雷达点周围（3x3）都生成一个点，再进行光线跟踪，进行清除。
+
+void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, double* min_x, double* min_y,
+                                              double* max_x, double* max_y)
+{
+	...
+	
+  // for each point in the cloud, we want to trace a line from the origin and clear obstacles along it
+  // 清除传感器原点到检测到的点之间的障碍物
+  for (unsigned int i = 0; i < cloud.points.size(); ++i)
+  {
+    double wx = cloud.points[i].x;
+    double wy = cloud.points[i].y;
+
+    //ROS_INFO("laser scan wx = %.2f, wy = %.2f", wx, wy);
+    //在检测到的点周围生成6x6的点，
+    double inflate_dx = 0.01, inflate_dy = 0.01; //在原来点的位置膨胀的尺度
+    std::vector< std::pair<double,double> > inflate_pts;
+    inflate_pts.push_back(std::make_pair(wx +    0      , wy +     0     ));
+    inflate_pts.push_back(std::make_pair(wx -    0      , wy - inflate_dy));
+    inflate_pts.push_back(std::make_pair(wx - inflate_dx, wy -     0     ));
+    inflate_pts.push_back(std::make_pair(wx + 0         , wy + inflate_dy));
+    inflate_pts.push_back(std::make_pair(wx + inflate_dx, wy +     0      ));
+    inflate_pts.push_back(std::make_pair(wx -    0        , wy - 2*inflate_dy));
+    inflate_pts.push_back(std::make_pair(wx - 2*inflate_dx, wy -     0     ));
+    inflate_pts.push_back(std::make_pair(wx +    0        , wy + 2*inflate_dy));
+    inflate_pts.push_back(std::make_pair(wx + 2*inflate_dx, wy +     0      ));
+    inflate_pts.push_back(std::make_pair(wx -    0        , wy - 3*inflate_dy));
+    inflate_pts.push_back(std::make_pair(wx - 3*inflate_dx, wy -     0     ));
+    inflate_pts.push_back(std::make_pair(wx +    0        , wy + 3*inflate_dy));
+    inflate_pts.push_back(std::make_pair(wx + 3*inflate_dx, wy +     0      ));  
+
+    std::vector< std::pair<double,double> >::iterator inflate_iter;
+    for(inflate_iter = inflate_pts.begin(); inflate_iter != inflate_pts.end(); inflate_iter++){
+      wx = (*inflate_iter).first;
+      wy = (*inflate_iter).second;
+
+	...
+    
+    MarkCell marker(costmap_, FREE_SPACE);
+    // and finally... we can execute our trace to clear obstacles along that line
+    //最终raytraceLine(marker, x0, y0, x1, y1, cell_raytrace_range); 
+    //会将所有在(x0,y0)>>(x1,y1)之间的所有cell标记为FREE_SPACE。
+    raytraceLine(marker, x0, y0, x1, y1, cell_raytrace_range);
+    //而updateRaytraceBounds 会根据测量的距离，更新扩张（min_x, min_y, max_x, max_y）。
+    updateRaytraceBounds(ox, oy, wx, wy, clearing_observation.raytrace_range_, min_x, min_y, max_x, max_y);
+  }
+  }
+}
+
+
+修改后就不会人总过后有拖影了～～
+
+--------------------- 
+作者：shawfy- 
+来源：CSDN 
+原文：https://blog.csdn.net/xinmei4275/article/details/88760505 
+版权声明：本文为博主原创文章，转载请附上博文链接！
