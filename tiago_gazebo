@@ -1,3 +1,9 @@
+  roslaunch tiago_gazebo tiago_gazebo.launch public_sim:=true robot:=steel
+  
+  roslaunch tiago_gazebo tiago_gazebo.launch public_sim:=true robot:=titanium
+  
+  
+  
   <!--deprecated argument, you should specify the parameters below-->
   <!-- They are described in tiago.urdf.xacro -->
   <arg name="robot"  default="titanium"/>
