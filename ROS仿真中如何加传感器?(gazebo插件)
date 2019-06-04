@@ -1,0 +1,69 @@
+
+ROS仿真中如何加传感器?(gazebo插件)
+
+http://moorerobots.com/blog/post/2
+
+https://blog.csdn.net/youngybird/article/details/82386358
+
+http://www.dqzdhw.com/jiqiren/1298.html
+
+https://blog.csdn.net/wubaobao1993/article/details/81054570
+http://www.guyuehome.com/2256
+
+面对这个问题，刚开始一头雾水。因为在跑案例的时候，打开了两个图形化界面：Rviz和gazebo，（当然这个说不准确，但对于新手的我，刚开始就这么认为的）。那么我的问题来了：
+
+    ros仿真需要那几步？
+    仿真调用的文件是来自哪里？每次都一样么？如果不一样，如何判断我需要哪个文件？
+    ros仿真如何添加新的传感器，新的传感器如何链接到小车上？
+
+ 
+
+这些问题，现在看来是因为刚开始知识储备不够，跑完wiki上的初级教程就跑案例。最后总结这么几点：
+
+      对于知识储备可以看古月居的探索总结一栏，扫一扫基础的概念理解；
+      对于这里的添加传感器问题，网上博客有很多说的，但太繁琐，没有抓住重点。所以建议看Simjlating Sensors in Gazebo 的讲解，再结合中文的古月居的《使用gazebo中的插件》一文；
+      在xacro，gazebo文件的各个标签，可以看http://wiki.ros.org/urdf/XML，中文的博客或多或少的有漏掉的。（可以百度翻译网页，句子不通的在看英文原文）
+
+ 
+
+ 
+
+先说插件，<plugin> 标签。相当于加载设备驱动，所以一直苦思冥想的链接模型和数据的文件，就是“插件”。那么整个问题就是围绕着插件来的，即：如何加载插件；插件如何链接模型；如何得到插件。
+
+ 一、
+
+    Simulating a Camera
+    We only need to add two blocks of code. 
+        mybot_description/urdf/mybot.xacro - Add the camera model
+        mybot_description/urdf/mybot.gazebo - Add the camera plugin
+
+这是从上面第2点网站贴出来的关键点。
+
+从这里就可以看出，加载一个传感器，其实就是加模型和插件。网上的博客模型大多是用url在线下载，而且写的很多文件其实是<include>包括来包括去的。根本的还是这两点。
+
+Tip:
+
+he names of each section is derived from the plugin class name. For example, "Block Laser" is from the GazeboRosBlockLaser class and can be found in the file gazebo_plugins/src/gazebo_ros_block_laser.cpp
+
+官网看到的，指出插件的相关文件命名都是一致的。
+
+ 二、
+
+模型和插件的文件对应，就是用 reference=”you_plugin_name” 这个参数设置。
+
+ 三、
+
+那么插件的位置，就在/opt/ros/kinetic/lib 下各种libgazebo_ros_***.so 文件。（kinetic版本）
+
+ 
+
+其实有了如何加载插件的答案后，其他的问题就不大了，百度就会有回答。
+
+ 
+
+其他的，如果“标签”中文的博客找不到，记得去wiki：http://wiki.ros.org/urdf/XML 会自动链接到官网。
+--------------------- 
+作者：youngybird 
+来源：CSDN 
+原文：https://blog.csdn.net/youngybird/article/details/82386358 
+版权声明：本文为博主原创文章，转载请附上博文链接！
