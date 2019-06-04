@@ -1,0 +1,915 @@
+roslaunch tiago_gazebo tiago_gazebo.launch public_sim:=true robot:=titanium
+... logging to /home/nucsim/.ros/log/d51d9eb6-866e-11e9-bf52-d89ef316b59d/roslaunch-nucsimPC-6428.log
+Checking log directory for disk usage. This may take awhile.
+Press Ctrl-C to interrupt
+Done checking log file disk usage. Usage is <1GB.
+
+started roslaunch server http://localhost:42153/
+
+SUMMARY
+========
+
+PARAMETERS
+ * /arm_controller/constraints/arm_1_joint/goal: 0.02
+ * /arm_controller/constraints/arm_2_joint/goal: 0.02
+ * /arm_controller/constraints/arm_3_joint/goal: 0.02
+ * /arm_controller/constraints/arm_4_joint/goal: 0.02
+ * /arm_controller/constraints/arm_5_joint/goal: 0.02
+ * /arm_controller/constraints/arm_6_joint/goal: 0.02
+ * /arm_controller/constraints/arm_7_joint/goal: 0.02
+ * /arm_controller/constraints/goal_time: 0.6
+ * /arm_controller/constraints/stopped_velocity_tolerance: 5.0
+ * /arm_controller/joints: ['arm_1_joint', '...
+ * /arm_controller/type: position_controll...
+ * /collision_model_parameters/blacklist/default: [{'second': 'tors...
+ * /collision_model_parameters/links_with_padding: ['arm_4_link', 'a...
+ * /collision_model_parameters/padding: 0.025
+ * /force_torque/wrist_ft/frame: wrist_ft_link
+ * /force_torque/wrist_ft/sensor_joint: arm_7_joint
+ * /force_torque_sensor_controller/publish_rate: 50
+ * /force_torque_sensor_controller/type: force_torque_sens...
+ * /gains/FFJ1/d: 0
+ * /gains/FFJ1/i: 10
+ * /gains/FFJ1/p: 100
+ * /gains/FFJ2/d: 0
+ * /gains/FFJ2/i: 10
+ * /gains/FFJ2/p: 100
+ * /gains/FFJ3/d: 0
+ * /gains/FFJ3/i: 10
+ * /gains/FFJ3/p: 100
+ * /gains/FFJ4/d: 0
+ * /gains/FFJ4/i: 10
+ * /gains/FFJ4/p: 100
+ * /gains/MFJ1/d: 0
+ * /gains/MFJ1/i: 10
+ * /gains/MFJ1/p: 100
+ * /gains/MFJ2/d: 0
+ * /gains/MFJ2/i: 10
+ * /gains/MFJ2/p: 100
+ * /gains/MFJ3/d: 0
+ * /gains/MFJ3/i: 10
+ * /gains/MFJ3/p: 100
+ * /gains/MFJ4/d: 0
+ * /gains/MFJ4/i: 10
+ * /gains/MFJ4/p: 100
+ * /gains/RFJ1/d: 0
+ * /gains/RFJ1/i: 10
+ * /gains/RFJ1/p: 100
+ * /gains/RFJ2/d: 0
+ * /gains/RFJ2/i: 10
+ * /gains/RFJ2/p: 100
+ * /gains/RFJ3/d: 0
+ * /gains/RFJ3/i: 10
+ * /gains/RFJ3/p: 100
+ * /gains/RFJ4/d: 0
+ * /gains/RFJ4/i: 10
+ * /gains/RFJ4/p: 100
+ * /gains/THJ1/d: 0
+ * /gains/THJ1/i: 10
+ * /gains/THJ1/p: 100
+ * /gains/THJ2/d: 0
+ * /gains/THJ2/i: 10
+ * /gains/THJ2/p: 100
+ * /gains/THJ4/d: 0
+ * /gains/THJ4/i: 10
+ * /gains/THJ4/p: 100
+ * /gains/THJ5/d: 0
+ * /gains/THJ5/i: 10
+ * /gains/THJ5/p: 100
+ * /gains/arm_1_joint/d: 5
+ * /gains/arm_1_joint/i: 1
+ * /gains/arm_1_joint/i_clamp: 3
+ * /gains/arm_1_joint/p: 3000
+ * /gains/arm_1_joint/torque_clamp: 60
+ * /gains/arm_2_joint/d: 5
+ * /gains/arm_2_joint/i: 1
+ * /gains/arm_2_joint/i_clamp: 3
+ * /gains/arm_2_joint/p: 3000
+ * /gains/arm_2_joint/torque_clamp: 50
+ * /gains/arm_3_joint/d: 5
+ * /gains/arm_3_joint/i: 1
+ * /gains/arm_3_joint/i_clamp: 3
+ * /gains/arm_3_joint/p: 3000
+ * /gains/arm_3_joint/torque_clamp: 50
+ * /gains/arm_4_joint/d: 5
+ * /gains/arm_4_joint/i: 1
+ * /gains/arm_4_joint/i_clamp: 3
+ * /gains/arm_4_joint/p: 3000
+ * /gains/arm_4_joint/torque_clamp: 50
+ * /gains/arm_5_joint/d: 1
+ * /gains/arm_5_joint/i: 0.1
+ * /gains/arm_5_joint/i_clamp: 3
+ * /gains/arm_5_joint/p: 500
+ * /gains/arm_5_joint/torque_clamp: 50
+ * /gains/arm_6_joint/d: 1
+ * /gains/arm_6_joint/i: 0.1
+ * /gains/arm_6_joint/i_clamp: 3
+ * /gains/arm_6_joint/p: 500
+ * /gains/arm_6_joint/torque_clamp: 50
+ * /gains/arm_7_joint/d: 1
+ * /gains/arm_7_joint/i: 0.1
+ * /gains/arm_7_joint/i_clamp: 3
+ * /gains/arm_7_joint/p: 500
+ * /gains/arm_7_joint/torque_clamp: 50
+ * /gains/gripper_finger_joint/d: 0
+ * /gains/gripper_finger_joint/i: 0
+ * /gains/gripper_finger_joint/p: 2000
+ * /gains/gripper_finger_joint/p_gain: 2000
+ * /gains/gripper_left_finger_joint/d: 0
+ * /gains/gripper_left_finger_joint/i: 0
+ * /gains/gripper_left_finger_joint/p: 2000
+ * /gains/gripper_left_finger_joint/p_gain: 2000
+ * /gains/gripper_right_finger_joint/d: 0
+ * /gains/gripper_right_finger_joint/i: 0
+ * /gains/gripper_right_finger_joint/p: 2000
+ * /gains/gripper_right_finger_joint/p_gain: 2000
+ * /gains/hand_index_abd_joint/d: 0.1
+ * /gains/hand_index_abd_joint/i: 0.1
+ * /gains/hand_index_abd_joint/i_clamp: 1
+ * /gains/hand_index_abd_joint/p: 50
+ * /gains/hand_index_flex_1_joint/d: 0.1
+ * /gains/hand_index_flex_1_joint/i: 0.1
+ * /gains/hand_index_flex_1_joint/i_clamp: 1
+ * /gains/hand_index_flex_1_joint/p: 50
+ * /gains/hand_index_flex_2_joint/d: 0.1
+ * /gains/hand_index_flex_2_joint/i: 0.1
+ * /gains/hand_index_flex_2_joint/i_clamp: 1
+ * /gains/hand_index_flex_2_joint/p: 50
+ * /gains/hand_index_flex_3_joint/d: 0.1
+ * /gains/hand_index_flex_3_joint/i: 0.1
+ * /gains/hand_index_flex_3_joint/i_clamp: 1
+ * /gains/hand_index_flex_3_joint/p: 50
+ * /gains/hand_index_joint/d: 0.1
+ * /gains/hand_index_joint/i: 0.1
+ * /gains/hand_index_joint/i_clamp: 1
+ * /gains/hand_index_joint/p: 50
+ * /gains/hand_index_virtual_1_joint/d: 0.1
+ * /gains/hand_index_virtual_1_joint/i: 0.1
+ * /gains/hand_index_virtual_1_joint/i_clamp: 1
+ * /gains/hand_index_virtual_1_joint/p: 50
+ * /gains/hand_index_virtual_2_joint/d: 0.1
+ * /gains/hand_index_virtual_2_joint/i: 0.1
+ * /gains/hand_index_virtual_2_joint/i_clamp: 1
+ * /gains/hand_index_virtual_2_joint/p: 50
+ * /gains/hand_index_virtual_3_joint/d: 0.1
+ * /gains/hand_index_virtual_3_joint/i: 0.1
+ * /gains/hand_index_virtual_3_joint/i_clamp: 1
+ * /gains/hand_index_virtual_3_joint/p: 50
+ * /gains/hand_little_abd_joint/d: 0.1
+ * /gains/hand_little_abd_joint/i: 0.1
+ * /gains/hand_little_abd_joint/i_clamp: 1
+ * /gains/hand_little_abd_joint/p: 50
+ * /gains/hand_little_flex_1_joint/d: 0.1
+ * /gains/hand_little_flex_1_joint/i: 0.1
+ * /gains/hand_little_flex_1_joint/i_clamp: 1
+ * /gains/hand_little_flex_1_joint/p: 50
+ * /gains/hand_little_flex_2_joint/d: 0.1
+ * /gains/hand_little_flex_2_joint/i: 0.1
+ * /gains/hand_little_flex_2_joint/i_clamp: 1
+ * /gains/hand_little_flex_2_joint/p: 50
+ * /gains/hand_little_flex_3_joint/d: 0.1
+ * /gains/hand_little_flex_3_joint/i: 0.1
+ * /gains/hand_little_flex_3_joint/i_clamp: 1
+ * /gains/hand_little_flex_3_joint/p: 50
+ * /gains/hand_little_virtual_1_joint/d: 0.1
+ * /gains/hand_little_virtual_1_joint/i: 0.1
+ * /gains/hand_little_virtual_1_joint/i_clamp: 1
+ * /gains/hand_little_virtual_1_joint/p: 50
+ * /gains/hand_little_virtual_2_joint/d: 0.1
+ * /gains/hand_little_virtual_2_joint/i: 0.1
+ * /gains/hand_little_virtual_2_joint/i_clamp: 1
+ * /gains/hand_little_virtual_2_joint/p: 50
+ * /gains/hand_little_virtual_3_joint/d: 0.1
+ * /gains/hand_little_virtual_3_joint/i: 0.1
+ * /gains/hand_little_virtual_3_joint/i_clamp: 1
+ * /gains/hand_little_virtual_3_joint/p: 50
+ * /gains/hand_middle_abd_joint/d: 0.1
+ * /gains/hand_middle_abd_joint/i: 0.1
+ * /gains/hand_middle_abd_joint/i_clamp: 1
+ * /gains/hand_middle_abd_joint/p: 50
+ * /gains/hand_middle_flex_1_joint/d: 0.1
+ * /gains/hand_middle_flex_1_joint/i: 0.1
+ * /gains/hand_middle_flex_1_joint/i_clamp: 1
+ * /gains/hand_middle_flex_1_joint/p: 50
+ * /gains/hand_middle_flex_2_joint/d: 0.1
+ * /gains/hand_middle_flex_2_joint/i: 0.1
+ * /gains/hand_middle_flex_2_joint/i_clamp: 1
+ * /gains/hand_middle_flex_2_joint/p: 50
+ * /gains/hand_middle_flex_3_joint/d: 0.1
+ * /gains/hand_middle_flex_3_joint/i: 0.1
+ * /gains/hand_middle_flex_3_joint/i_clamp: 1
+ * /gains/hand_middle_flex_3_joint/p: 50
+ * /gains/hand_middle_virtual_1_joint/d: 0.1
+ * /gains/hand_middle_virtual_1_joint/i: 0.1
+ * /gains/hand_middle_virtual_1_joint/i_clamp: 1
+ * /gains/hand_middle_virtual_1_joint/p: 50
+ * /gains/hand_middle_virtual_2_joint/d: 0.1
+ * /gains/hand_middle_virtual_2_joint/i: 0.1
+ * /gains/hand_middle_virtual_2_joint/i_clamp: 1
+ * /gains/hand_middle_virtual_2_joint/p: 50
+ * /gains/hand_middle_virtual_3_joint/d: 0.1
+ * /gains/hand_middle_virtual_3_joint/i: 0.1
+ * /gains/hand_middle_virtual_3_joint/i_clamp: 1
+ * /gains/hand_middle_virtual_3_joint/p: 50
+ * /gains/hand_mrl_joint/d: 0.1
+ * /gains/hand_mrl_joint/i: 0.1
+ * /gains/hand_mrl_joint/i_clamp: 1
+ * /gains/hand_mrl_joint/p: 50
+ * /gains/hand_ring_abd_joint/d: 0.1
+ * /gains/hand_ring_abd_joint/i: 0.1
+ * /gains/hand_ring_abd_joint/i_clamp: 1
+ * /gains/hand_ring_abd_joint/p: 50
+ * /gains/hand_ring_flex_1_joint/d: 0.1
+ * /gains/hand_ring_flex_1_joint/i: 0.1
+ * /gains/hand_ring_flex_1_joint/i_clamp: 1
+ * /gains/hand_ring_flex_1_joint/p: 50
+ * /gains/hand_ring_flex_2_joint/d: 0.1
+ * /gains/hand_ring_flex_2_joint/i: 0.1
+ * /gains/hand_ring_flex_2_joint/i_clamp: 1
+ * /gains/hand_ring_flex_2_joint/p: 50
+ * /gains/hand_ring_flex_3_joint/d: 0.1
+ * /gains/hand_ring_flex_3_joint/i: 0.1
+ * /gains/hand_ring_flex_3_joint/i_clamp: 1
+ * /gains/hand_ring_flex_3_joint/p: 50
+ * /gains/hand_ring_virtual_1_joint/d: 0.1
+ * /gains/hand_ring_virtual_1_joint/i: 0.1
+ * /gains/hand_ring_virtual_1_joint/i_clamp: 1
+ * /gains/hand_ring_virtual_1_joint/p: 50
+ * /gains/hand_ring_virtual_2_joint/d: 0.1
+ * /gains/hand_ring_virtual_2_joint/i: 0.1
+ * /gains/hand_ring_virtual_2_joint/i_clamp: 1
+ * /gains/hand_ring_virtual_2_joint/p: 50
+ * /gains/hand_ring_virtual_3_joint/d: 0.1
+ * /gains/hand_ring_virtual_3_joint/i: 0.1
+ * /gains/hand_ring_virtual_3_joint/i_clamp: 1
+ * /gains/hand_ring_virtual_3_joint/p: 50
+ * /gains/hand_thumb_abd_joint/d: 0.1
+ * /gains/hand_thumb_abd_joint/i: 0.1
+ * /gains/hand_thumb_abd_joint/i_clamp: 1
+ * /gains/hand_thumb_abd_joint/p: 50
+ * /gains/hand_thumb_flex_1_joint/d: 0.1
+ * /gains/hand_thumb_flex_1_joint/i: 0.1
+ * /gains/hand_thumb_flex_1_joint/i_clamp: 1
+ * /gains/hand_thumb_flex_1_joint/p: 50
+ * /gains/hand_thumb_flex_2_joint/d: 0.1
+ * /gains/hand_thumb_flex_2_joint/i: 0.1
+ * /gains/hand_thumb_flex_2_joint/i_clamp: 1
+ * /gains/hand_thumb_flex_2_joint/p: 50
+ * /gains/hand_thumb_flex_3_joint/d: 0.1
+ * /gains/hand_thumb_flex_3_joint/i: 0.1
+ * /gains/hand_thumb_flex_3_joint/i_clamp: 1
+ * /gains/hand_thumb_flex_3_joint/p: 50
+ * /gains/hand_thumb_joint/d: 0.1
+ * /gains/hand_thumb_joint/i: 0.1
+ * /gains/hand_thumb_joint/i_clamp: 1
+ * /gains/hand_thumb_joint/p: 50
+ * /gains/hand_thumb_virtual_1_joint/d: 0.1
+ * /gains/hand_thumb_virtual_1_joint/i: 0.1
+ * /gains/hand_thumb_virtual_1_joint/i_clamp: 1
+ * /gains/hand_thumb_virtual_1_joint/p: 50
+ * /gains/hand_thumb_virtual_2_joint/d: 0.1
+ * /gains/hand_thumb_virtual_2_joint/i: 0.1
+ * /gains/hand_thumb_virtual_2_joint/i_clamp: 1
+ * /gains/hand_thumb_virtual_2_joint/p: 50
+ * /gains/hand_thumb_virtual_3_joint/d: 0.1
+ * /gains/hand_thumb_virtual_3_joint/i: 0.1
+ * /gains/hand_thumb_virtual_3_joint/i_clamp: 1
+ * /gains/hand_thumb_virtual_3_joint/p: 50
+ * /gains/head_1_joint/d: 0
+ * /gains/head_1_joint/i: 10
+ * /gains/head_1_joint/i_clamp: 1.5
+ * /gains/head_1_joint/p: 100
+ * /gains/head_2_joint/d: 0
+ * /gains/head_2_joint/i: 10
+ * /gains/head_2_joint/i_clamp: 1.5
+ * /gains/head_2_joint/p: 100
+ * /gains/suspension_left_joint/d: 250
+ * /gains/suspension_left_joint/i: 0.1
+ * /gains/suspension_left_joint/i_clamp: 1.5
+ * /gains/suspension_left_joint/p: 30000
+ * /gains/suspension_right_joint/d: 250
+ * /gains/suspension_right_joint/i: 0.1
+ * /gains/suspension_right_joint/i_clamp: 1.5
+ * /gains/suspension_right_joint/p: 30000
+ * /gains/torso_lift_joint/d: 250
+ * /gains/torso_lift_joint/i: 0.1
+ * /gains/torso_lift_joint/i_clamp: 1.5
+ * /gains/torso_lift_joint/p: 30000
+ * /gains/xtion_frame_joint/d: 0
+ * /gains/xtion_frame_joint/i: 0
+ * /gains/xtion_frame_joint/i_clamp: 1.5
+ * /gains/xtion_frame_joint/p: 0.5
+ * /hand_controller/constraints/goal_time: 0.6
+ * /hand_controller/constraints/hand_index_joint/goal: 0.6
+ * /hand_controller/constraints/hand_mrl_joint/goal: 0.3
+ * /hand_controller/constraints/hand_thumb_joint/goal: 0.3
+ * /hand_controller/constraints/stopped_velocity_tolerance: 0.75
+ * /hand_controller/joints: ['hand_thumb_join...
+ * /hand_controller/stop_trajectory_duration: 0.0
+ * /hand_controller/type: position_controll...
+ * /hand_grasping_action/target_controller: hand_controller
+ * /head_controller/constraints/goal_time: 2.0
+ * /head_controller/constraints/head_1_joint/goal: 0.5
+ * /head_controller/constraints/head_2_joint/goal: 0.5
+ * /head_controller/constraints/stopped_velocity_tolerance: 5.0
+ * /head_controller/joints: ['head_1_joint', ...
+ * /head_controller/point_head_action/pan_link: head_1_link
+ * /head_controller/point_head_action/success_angle_threshold: 0.01
+ * /head_controller/point_head_action/tilt_link: head_2_link
+ * /head_controller/type: position_controll...
+ * /imu/base_imu/frame: base_imu_link
+ * /imu/base_imu/gazebo_sensor_name: imu_sensor
+ * /imu_sensor_controller/publish_rate: 50
+ * /imu_sensor_controller/type: imu_sensor_contro...
+ * /joint_state_controller/extra_joints: [{'name': 'caster...
+ * /joint_state_controller/publish_rate: 50
+ * /joint_state_controller/type: joint_state_contr...
+ * /joystick/autorepeat_rate: 10
+ * /joystick_relay/priority: False
+ * /joystick_relay/turbo/angular_max: 1.3962634016
+ * /joystick_relay/turbo/angular_min: 0.261799387799
+ * /joystick_relay/turbo/linear_backward_max: 0.3
+ * /joystick_relay/turbo/linear_backward_min: 0.1
+ * /joystick_relay/turbo/linear_forward_max: 0.5
+ * /joystick_relay/turbo/linear_forward_min: 0.1
+ * /joystick_relay/turbo/steps: 6
+ * /mobile_base_controller/angular/z/has_acceleration_limits: True
+ * /mobile_base_controller/angular/z/has_velocity_limits: True
+ * /mobile_base_controller/angular/z/max_acceleration: 2.09439510239
+ * /mobile_base_controller/angular/z/max_velocity: 2.09439510239
+ * /mobile_base_controller/base_frame_id: /base_footprint
+ * /mobile_base_controller/cmd_vel_timeout: 0.25
+ * /mobile_base_controller/left_wheel: wheel_left_joint
+ * /mobile_base_controller/linear/x/has_acceleration_limits: True
+ * /mobile_base_controller/linear/x/has_velocity_limits: True
+ * /mobile_base_controller/linear/x/max_acceleration: 1.0
+ * /mobile_base_controller/linear/x/max_velocity: 1.0
+ * /mobile_base_controller/linear/x/min_velocity: -0.2
+ * /mobile_base_controller/odom_frame_id: /odom
+ * /mobile_base_controller/pose_covariance_diagonal: [0.001, 0.001, 10...
+ * /mobile_base_controller/preserve_turning_radius: True
+ * /mobile_base_controller/publish_rate: 50.0
+ * /mobile_base_controller/publish_wheel_data: True
+ * /mobile_base_controller/right_wheel: wheel_right_joint
+ * /mobile_base_controller/twist_covariance_diagonal: [0.001, 0.001, 10...
+ * /mobile_base_controller/type: diff_drive_contro...
+ * /move_group/allow_trajectory_execution: True
+ * /move_group/arm/longest_valid_segment_fraction: 0.01
+ * /move_group/arm/planner_configs: ['SBLkConfigDefau...
+ * /move_group/arm/projection_evaluator: joints(arm_1_join...
+ * /move_group/arm_torso/longest_valid_segment_fraction: 0.01
+ * /move_group/arm_torso/planner_configs: ['SBLkConfigDefau...
+ * /move_group/arm_torso/projection_evaluator: joints(torso_lift...
+ * /move_group/capabilities: move_group/MoveGr...
+ * /move_group/controller_list: [{'default': True...
+ * /move_group/controller_manager_name: controller_manager
+ * /move_group/controller_manager_ns: controller_manager
+ * /move_group/jiggle_fraction: 0.05
+ * /move_group/max_safe_path_cost: 1
+ * /move_group/moveit_controller_manager: moveit_simple_con...
+ * /move_group/moveit_manage_controllers: True
+ * /move_group/planner_configs/BKPIECEkConfigDefault/type: geometric::BKPIECE
+ * /move_group/planner_configs/ESTkConfigDefault/type: geometric::EST
+ * /move_group/planner_configs/KPIECEkConfigDefault/type: geometric::KPIECE
+ * /move_group/planner_configs/LBKPIECEkConfigDefault/type: geometric::LBKPIECE
+ * /move_group/planner_configs/PRMkConfigDefault/type: geometric::PRM
+ * /move_group/planner_configs/PRMstarkConfigDefault/type: geometric::PRMstar
+ * /move_group/planner_configs/RRTConnectkConfigDefault/type: geometric::RRTCon...
+ * /move_group/planner_configs/RRTkConfigDefault/type: geometric::RRT
+ * /move_group/planner_configs/RRTstarkConfigDefault/type: geometric::RRTstar
+ * /move_group/planner_configs/SBLkConfigDefault/type: geometric::SBL
+ * /move_group/planner_configs/TRRTkConfigDefault/type: geometric::TRRT
+ * /move_group/planning_plugin: ompl_interface/OM...
+ * /move_group/planning_scene_monitor/publish_geometry_updates: True
+ * /move_group/planning_scene_monitor/publish_planning_scene: True
+ * /move_group/planning_scene_monitor/publish_state_updates: True
+ * /move_group/planning_scene_monitor/publish_transforms_updates: True
+ * /move_group/request_adapters: default_planner_r...
+ * /move_group/start_state_max_bounds_error: 0.1
+ * /move_group/trajectory_execution/allowed_execution_duration_scaling: 1.2
+ * /move_group/trajectory_execution/allowed_goal_duration_margin: 0.5
+ * /move_group/use_controller_manager: True
+ * /pal_robot_info/type: tiago
+ * /play_motion/approach_planner/exclude_from_planning_joints: ['head_1_joint', ...
+ * /play_motion/approach_planner/joint_tolerance: 0.01
+ * /play_motion/approach_planner/planning_groups: ['arm_torso', 'arm']
+ * /play_motion/approach_planner/skip_planning_approach_min_dur: 0.5
+ * /play_motion/approach_planner/skip_planning_approach_vel: 0.5
+ * /play_motion/controllers: ['arm_controller'...
+ * /play_motion/disable_motion_planning: False
+ * /play_motion/motions/close/joints: ['hand_thumb_join...
+ * /play_motion/motions/close/meta/description: Closes hand
+ * /play_motion/motions/close/meta/name: Close Hand
+ * /play_motion/motions/close/meta/usage: demo
+ * /play_motion/motions/close/points: [{'positions': [2...
+ * /play_motion/motions/close_half/joints: ['hand_thumb_join...
+ * /play_motion/motions/close_half/meta/description: Closes hand halfway
+ * /play_motion/motions/close_half/meta/name: Close Hand Half
+ * /play_motion/motions/close_half/meta/usage: demo
+ * /play_motion/motions/close_half/points: [{'positions': [3...
+ * /play_motion/motions/close_hand/joints: ['hand_thumb_join...
+ * /play_motion/motions/close_hand/points: [{'positions': [2...
+ * /play_motion/motions/do_weights/joints: ['arm_1_joint', '...
+ * /play_motion/motions/do_weights/meta/description: Do weights
+ * /play_motion/motions/do_weights/meta/name: Do Weights
+ * /play_motion/motions/do_weights/meta/usage: demo
+ * /play_motion/motions/do_weights/points: [{'positions': [1...
+ * /play_motion/motions/gun_hand/joints: ['hand_thumb_join...
+ * /play_motion/motions/gun_hand/meta/description: gun_hand
+ * /play_motion/motions/gun_hand/meta/name: Gun Hand
+ * /play_motion/motions/gun_hand/meta/usage: demo
+ * /play_motion/motions/gun_hand/points: [{'positions': [-...
+ * /play_motion/motions/head_tour/joints: ['head_1_joint', ...
+ * /play_motion/motions/head_tour/meta/description: head_tour
+ * /play_motion/motions/head_tour/meta/name: Head Tour
+ * /play_motion/motions/head_tour/meta/usage: demo
+ * /play_motion/motions/head_tour/points: [{'positions': [0...
+ * /play_motion/motions/home/joints: ['torso_lift_join...
+ * /play_motion/motions/home/meta/description: Go home
+ * /play_motion/motions/home/meta/name: Home
+ * /play_motion/motions/home/meta/usage: demo
+ * /play_motion/motions/home/points: [{'positions': [0...
+ * /play_motion/motions/inspect_surroundings/joints: ['head_1_joint', ...
+ * /play_motion/motions/inspect_surroundings/meta/description: Inspect surroundi...
+ * /play_motion/motions/inspect_surroundings/meta/name: Inspect Surroundings
+ * /play_motion/motions/inspect_surroundings/meta/usage: demo
+ * /play_motion/motions/inspect_surroundings/points: [{'positions': [-...
+ * /play_motion/motions/offer/joints: ['torso_lift_join...
+ * /play_motion/motions/offer/meta/description: Offer hand
+ * /play_motion/motions/offer/meta/name: Offer Hand
+ * /play_motion/motions/offer/meta/usage: demo
+ * /play_motion/motions/offer/points: [{'positions': [0...
+ * /play_motion/motions/offer_hand/joints: ['torso_lift_join...
+ * /play_motion/motions/offer_hand/points: [{'positions': [0...
+ * /play_motion/motions/open/joints: ['hand_thumb_join...
+ * /play_motion/motions/open/meta/description: Opens hand
+ * /play_motion/motions/open/meta/name: Open Hand
+ * /play_motion/motions/open/meta/usage: demo
+ * /play_motion/motions/open/points: [{'positions': [-...
+ * /play_motion/motions/open_hand/joints: ['hand_thumb_join...
+ * /play_motion/motions/open_hand/points: [{'positions': [-...
+ * /play_motion/motions/pick_from_floor/joints: ['torso_lift_join...
+ * /play_motion/motions/pick_from_floor/meta/description: Pick a shirt-like...
+ * /play_motion/motions/pick_from_floor/meta/name: Pick from floor
+ * /play_motion/motions/pick_from_floor/meta/usage: demo
+ * /play_motion/motions/pick_from_floor/points: [{'positions': [0...
+ * /play_motion/motions/pinch_hand/joints: ['hand_thumb_join...
+ * /play_motion/motions/pinch_hand/meta/description: pinch_hand
+ * /play_motion/motions/pinch_hand/meta/name: Pinch Hand
+ * /play_motion/motions/pinch_hand/meta/usage: demo
+ * /play_motion/motions/pinch_hand/points: [{'positions': [0...
+ * /play_motion/motions/point/joints: ['hand_thumb_join...
+ * /play_motion/motions/point/meta/description: Pointing Hand
+ * /play_motion/motions/point/meta/name: Pointing Hand
+ * /play_motion/motions/point/meta/usage: demo
+ * /play_motion/motions/point/points: [{'positions': [2...
+ * /play_motion/motions/pointing_hand/joints: ['hand_thumb_join...
+ * /play_motion/motions/pointing_hand/points: [{'positions': [2...
+ * /play_motion/motions/pregrasp_weight/joints: ['torso_lift_join...
+ * /play_motion/motions/pregrasp_weight/meta/description: Pregrasp weight
+ * /play_motion/motions/pregrasp_weight/meta/name: Pregrasp Weight
+ * /play_motion/motions/pregrasp_weight/meta/usage: demo
+ * /play_motion/motions/pregrasp_weight/points: [{'positions': [0...
+ * /play_motion/motions/prepare_grasp/joints: ['torso_lift_join...
+ * /play_motion/motions/prepare_grasp/meta/description: Prepare grasp pos...
+ * /play_motion/motions/prepare_grasp/meta/name: Prepare Grasp
+ * /play_motion/motions/prepare_grasp/meta/usage: demo
+ * /play_motion/motions/prepare_grasp/points: [{'positions': [0...
+ * /play_motion/motions/reach_floor/joints: ['torso_lift_join...
+ * /play_motion/motions/reach_floor/meta/description: Reach floor
+ * /play_motion/motions/reach_floor/meta/name: Reach Floor
+ * /play_motion/motions/reach_floor/meta/usage: demo
+ * /play_motion/motions/reach_floor/points: [{'positions': [0...
+ * /play_motion/motions/reach_max/joints: ['torso_lift_join...
+ * /play_motion/motions/reach_max/meta/description: Reach max
+ * /play_motion/motions/reach_max/meta/name: Reach Max
+ * /play_motion/motions/reach_max/meta/usage: demo
+ * /play_motion/motions/reach_max/points: [{'positions': [0...
+ * /play_motion/motions/shake_hands/joints: ['hand_thumb_join...
+ * /play_motion/motions/shake_hands/meta/description: shake_hands
+ * /play_motion/motions/shake_hands/meta/name: Shake hands
+ * /play_motion/motions/shake_hands/meta/usage: demo
+ * /play_motion/motions/shake_hands/points: [{'positions': [0...
+ * /play_motion/motions/thumb_up_hand/joints: ['hand_thumb_join...
+ * /play_motion/motions/thumb_up_hand/meta/description: thumb_up_hand
+ * /play_motion/motions/thumb_up_hand/meta/name: Thumb Up Hand
+ * /play_motion/motions/thumb_up_hand/meta/usage: demo
+ * /play_motion/motions/thumb_up_hand/points: [{'positions': [-...
+ * /play_motion/motions/unfold_arm/joints: ['torso_lift_join...
+ * /play_motion/motions/unfold_arm/meta/description: unfold_arm
+ * /play_motion/motions/unfold_arm/meta/name: Unfold arm
+ * /play_motion/motions/unfold_arm/meta/usage: demo
+ * /play_motion/motions/unfold_arm/points: [{'positions': [0...
+ * /play_motion/motions/wave/joints: ['arm_1_joint', '...
+ * /play_motion/motions/wave/meta/description: wave
+ * /play_motion/motions/wave/meta/name: Wave
+ * /play_motion/motions/wave/meta/usage: demo
+ * /play_motion/motions/wave/points: [{'positions': [0...
+ * /robot_description: <?xml version="1....
+ * /robot_description_kinematics/arm/kinematics_solver: kdl_kinematics_pl...
+ * /robot_description_kinematics/arm/kinematics_solver_attempts: 3
+ * /robot_description_kinematics/arm/kinematics_solver_search_resolution: 0.005
+ * /robot_description_kinematics/arm/kinematics_solver_timeout: 0.005
+ * /robot_description_kinematics/arm_torso/kinematics_solver: kdl_kinematics_pl...
+ * /robot_description_kinematics/arm_torso/kinematics_solver_attempts: 3
+ * /robot_description_kinematics/arm_torso/kinematics_solver_search_resolution: 0.005
+ * /robot_description_kinematics/arm_torso/kinematics_solver_timeout: 0.005
+ * /robot_description_planning/joint_limits/arm_1_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/arm_1_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/arm_1_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/arm_1_joint/max_velocity: 2.7
+ * /robot_description_planning/joint_limits/arm_2_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/arm_2_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/arm_2_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/arm_2_joint/max_velocity: 3.66
+ * /robot_description_planning/joint_limits/arm_3_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/arm_3_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/arm_3_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/arm_3_joint/max_velocity: 4.58
+ * /robot_description_planning/joint_limits/arm_4_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/arm_4_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/arm_4_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/arm_4_joint/max_velocity: 4.58
+ * /robot_description_planning/joint_limits/arm_5_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/arm_5_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/arm_5_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/arm_5_joint/max_velocity: 1.95
+ * /robot_description_planning/joint_limits/arm_6_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/arm_6_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/arm_6_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/arm_6_joint/max_velocity: 1.76
+ * /robot_description_planning/joint_limits/arm_7_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/arm_7_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/arm_7_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/arm_7_joint/max_velocity: 1.76
+ * /robot_description_planning/joint_limits/gripper_finger_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/gripper_finger_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/gripper_finger_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/gripper_finger_joint/max_velocity: 0.01
+ * /robot_description_planning/joint_limits/gripper_left_finger_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/gripper_left_finger_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/gripper_left_finger_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/gripper_left_finger_joint/max_velocity: 0.01
+ * /robot_description_planning/joint_limits/gripper_right_finger_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/gripper_right_finger_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/gripper_right_finger_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/gripper_right_finger_joint/max_velocity: 0.01
+ * /robot_description_planning/joint_limits/torso_lift_joint/has_acceleration_limits: False
+ * /robot_description_planning/joint_limits/torso_lift_joint/has_velocity_limits: True
+ * /robot_description_planning/joint_limits/torso_lift_joint/max_acceleration: 0
+ * /robot_description_planning/joint_limits/torso_lift_joint/max_velocity: 0.07
+ * /robot_description_semantic: <!-- Autogenerate...
+ * /robot_state_publisher/publish_frequency: 50.0
+ * /robot_state_publisher/tf_prefix: 
+ * /rosdistro: kinetic
+ * /rosversion: 1.12.14
+ * /teleop/close_hand/action_goal/motion_name: close_hand
+ * /teleop/close_hand/action_goal/skip_planning: True
+ * /teleop/close_hand/action_name: /play_motion
+ * /teleop/close_hand/buttons: [7]
+ * /teleop/close_hand/type: action
+ * /teleop/head_down/action_goal/increment_by: [-0.1, 0]
+ * /teleop/head_down/action_name: /head_controller/...
+ * /teleop/head_down/buttons: [2]
+ * /teleop/head_down/type: action
+ * /teleop/head_left/action_goal/increment_by: [0, 0.1]
+ * /teleop/head_left/action_name: /head_controller/...
+ * /teleop/head_left/buttons: [3]
+ * /teleop/head_left/type: action
+ * /teleop/head_right/action_goal/increment_by: [0, -0.1]
+ * /teleop/head_right/action_name: /head_controller/...
+ * /teleop/head_right/buttons: [1]
+ * /teleop/head_right/type: action
+ * /teleop/head_up/action_goal/increment_by: [0.1, 0]
+ * /teleop/head_up/action_name: /head_controller/...
+ * /teleop/head_up/buttons: [0]
+ * /teleop/head_up/type: action
+ * /teleop/joy_priority/action_name: joy_priority_action
+ * /teleop/joy_priority/buttons: [9]
+ * /teleop/joy_priority/type: action
+ * /teleop/joy_turbo_angular_decrease/action_name: joy_turbo_angular...
+ * /teleop/joy_turbo_angular_decrease/buttons: [8, 2]
+ * /teleop/joy_turbo_angular_decrease/type: action
+ * /teleop/joy_turbo_angular_increase/action_name: joy_turbo_angular...
+ * /teleop/joy_turbo_angular_increase/buttons: [8, 0]
+ * /teleop/joy_turbo_angular_increase/type: action
+ * /teleop/joy_turbo_decrease/action_name: joy_turbo_decrease
+ * /teleop/joy_turbo_decrease/buttons: [8, 1]
+ * /teleop/joy_turbo_decrease/type: action
+ * /teleop/joy_turbo_increase/action_name: joy_turbo_increase
+ * /teleop/joy_turbo_increase/buttons: [8, 3]
+ * /teleop/joy_turbo_increase/type: action
+ * /teleop/joy_turbo_reset/action_name: joy_turbo_reset
+ * /teleop/joy_turbo_reset/buttons: [10, 11]
+ * /teleop/joy_turbo_reset/type: action
+ * /teleop/move/axis_mappings: [{'scale': 1.0, '...
+ * /teleop/move/message_type: geometry_msgs/Twist
+ * /teleop/move/topic_name: cmd_vel
+ * /teleop/move/type: topic
+ * /teleop/open_hand/action_goal/motion_name: open_hand
+ * /teleop/open_hand/action_goal/skip_planning: True
+ * /teleop/open_hand/action_name: /play_motion
+ * /teleop/open_hand/buttons: [5]
+ * /teleop/open_hand/type: action
+ * /teleop/torso_down/action_goal/increment_by: [-0.05]
+ * /teleop/torso_down/action_name: /torso_controller...
+ * /teleop/torso_down/buttons: [6]
+ * /teleop/torso_down/type: action
+ * /teleop/torso_up/action_goal/increment_by: [0.05]
+ * /teleop/torso_up/action_name: /torso_controller...
+ * /teleop/torso_up/buttons: [4]
+ * /teleop/torso_up/type: action
+ * /torso_controller/constraints/goal_time: 0.6
+ * /torso_controller/constraints/stopped_velocity_tolerance: 5.0
+ * /torso_controller/constraints/torso_1_joint/goal: 0.02
+ * /torso_controller/constraints/torso_2_joint/goal: 0.02
+ * /torso_controller/joints: ['torso_lift_joint']
+ * /torso_controller/type: position_controll...
+ * /twist_mux/locks: [{'topic': 'pause...
+ * /twist_mux/topics: [{'topic': 'nav_v...
+ * /use_sim_time: True
+ * /velocity/pid_gains/caster_back_left_1_joint/d: 0
+ * /velocity/pid_gains/caster_back_left_1_joint/i: 0
+ * /velocity/pid_gains/caster_back_left_1_joint/i_clamp: 0
+ * /velocity/pid_gains/caster_back_left_1_joint/p: 0
+ * /velocity/pid_gains/caster_back_left_2_joint/d: 0
+ * /velocity/pid_gains/caster_back_left_2_joint/i: 0
+ * /velocity/pid_gains/caster_back_left_2_joint/i_clamp: 0
+ * /velocity/pid_gains/caster_back_left_2_joint/p: 0
+ * /velocity/pid_gains/caster_back_right_1_joint/d: 0
+ * /velocity/pid_gains/caster_back_right_1_joint/i: 0
+ * /velocity/pid_gains/caster_back_right_1_joint/i_clamp: 0
+ * /velocity/pid_gains/caster_back_right_1_joint/p: 0
+ * /velocity/pid_gains/caster_back_right_2_joint/d: 0
+ * /velocity/pid_gains/caster_back_right_2_joint/i: 0
+ * /velocity/pid_gains/caster_back_right_2_joint/i_clamp: 0
+ * /velocity/pid_gains/caster_back_right_2_joint/p: 0
+ * /velocity/pid_gains/caster_front_left_1_joint/d: 0
+ * /velocity/pid_gains/caster_front_left_1_joint/i: 0
+ * /velocity/pid_gains/caster_front_left_1_joint/i_clamp: 0
+ * /velocity/pid_gains/caster_front_left_1_joint/p: 0
+ * /velocity/pid_gains/caster_front_left_2_joint/d: 0
+ * /velocity/pid_gains/caster_front_left_2_joint/i: 0
+ * /velocity/pid_gains/caster_front_left_2_joint/i_clamp: 0
+ * /velocity/pid_gains/caster_front_left_2_joint/p: 0
+ * /velocity/pid_gains/caster_front_right_1_joint/d: 0
+ * /velocity/pid_gains/caster_front_right_1_joint/i: 0
+ * /velocity/pid_gains/caster_front_right_1_joint/i_clamp: 0
+ * /velocity/pid_gains/caster_front_right_1_joint/p: 0
+ * /velocity/pid_gains/caster_front_right_2_joint/d: 0
+ * /velocity/pid_gains/caster_front_right_2_joint/i: 0
+ * /velocity/pid_gains/caster_front_right_2_joint/i_clamp: 0
+ * /velocity/pid_gains/caster_front_right_2_joint/p: 0
+ * /velocity/pid_gains/wheel_left_joint/d: 0
+ * /velocity/pid_gains/wheel_left_joint/i: 0
+ * /velocity/pid_gains/wheel_left_joint/i_clamp: 1.0
+ * /velocity/pid_gains/wheel_left_joint/p: 30
+ * /velocity/pid_gains/wheel_right_joint/d: 0
+ * /velocity/pid_gains/wheel_right_joint/i: 0
+ * /velocity/pid_gains/wheel_right_joint/i_clamp: 1.0
+ * /velocity/pid_gains/wheel_right_joint/p: 30
+
+NODES
+  /torso_controller/
+    incrementer (joy_teleop/incrementer_server)
+  /xtion/rgb/
+    image_proc (image_proc/image_proc)
+  /head_controller/
+    incrementer (joy_teleop/incrementer_server)
+    point_head_action (head_action/head_action)
+  /
+    bringup_controllers_spawner_ft (controller_manager/spawner)
+    bringup_controllers_spawner_imu (controller_manager/spawner)
+    default_controllers_spawner (controller_manager/spawner)
+    gazebo (gazebo_ros/gzserver)
+    gazebo_gui (gazebo_ros/gzclient)
+    hand_controller_spawner (controller_manager/spawner)
+    hand_grasping_action (simple_grasping_action/simple_grasping_action)
+    image_raw_to_rect_color_relay (topic_tools/relay)
+    is_already_there (play_motion/is_already_there.py)
+    joy_teleop (joy_teleop/joy_teleop.py)
+    joystick (joy/joy_node)
+    joystick_relay (twist_mux/joystick_relay.py)
+    move_group (moveit_ros_move_group/move_group)
+    play_motion (play_motion/play_motion)
+    robot_state_publisher (robot_state_publisher/state_publisher)
+    spawn_model (gazebo_ros/spawn_model)
+    tf_lookup (tf_lookup/tf_lookup)
+    tuck_arm (tiago_gazebo/tuck_arm.py)
+    twist_marker (twist_mux/twist_marker)
+    twist_mux (twist_mux/twist_mux)
+
+auto-starting new master
+process[master]: started with pid [6497]
+ROS_MASTER_URI=http://localhost:11311
+
+setting /run_id to d51d9eb6-866e-11e9-bf52-d89ef316b59d
+process[rosout-1]: started with pid [6521]
+started core service [/rosout]
+process[gazebo-2]: started with pid [6524]
+process[gazebo_gui-3]: started with pid [6550]
+process[spawn_model-4]: started with pid [6555]
+process[default_controllers_spawner-5]: started with pid [6556]
+process[head_controller/point_head_action-6]: started with pid [6559]
+process[bringup_controllers_spawner_imu-7]: started with pid [6560]
+process[bringup_controllers_spawner_ft-8]: started with pid [6562]
+process[hand_controller_spawner-9]: started with pid [6563]
+process[hand_grasping_action-10]: started with pid [6564]
+process[play_motion-11]: started with pid [6566]
+[ INFO] [1559614627.690193511]: Load description from: /robot_description
+process[is_already_there-12]: started with pid [6615]
+process[move_group-13]: started with pid [6684]
+process[robot_state_publisher-14]: started with pid [6687]
+process[tf_lookup-15]: started with pid [6692]
+process[twist_mux-16]: started with pid [6775]
+[ INFO] [1559614629.219982730]: Topic handler 'navigation' subscribed to topic 'nav_vel': timeout = 0.500000s, priority = 10
+[ INFO] [1559614629.223627839]: Topic handler 'joystick' subscribed to topic 'joy_vel': timeout = 0.500000s, priority = 100
+[ INFO] [1559614629.226555841]: Topic handler 'keyboard' subscribed to topic 'key_vel': timeout = 0.500000s, priority = 90
+[ INFO] [1559614629.229361319]: Topic handler 'tablet' subscribed to topic 'tab_vel': timeout = 0.500000s, priority = 100
+[ INFO] [1559614629.232305833]: Topic handler 'marker' subscribed to topic 'marker_vel': timeout = 0.500000s, priority = 99
+[ INFO] [1559614629.235526657]: Topic handler 'phone' subscribed to topic 'phone_vel': timeout = 0.500000s, priority = 98
+[ INFO] [1559614629.238910220]: Topic handler 'rviz_joy' subscribed to topic 'rviz_joy_vel': timeout = 0.500000s, priority = 95
+[ INFO] [1559614629.241972632]: Topic handler 'servoing_cmd_vel' subscribed to topic 'servoing_cmd_vel': timeout = 0.500000s, priority = 20
+[ INFO] [1559614629.246349252]: Topic handler 'pause' subscribed to topic 'pause_navigation': timeout = None, priority = 100
+[ INFO] [1559614629.249436224]: Topic handler 'loop_closure' subscribed to topic 'stop_closing_loop': timeout = None, priority = 200
+[ INFO] [1559614629.252385176]: Topic handler 'joystick' subscribed to topic 'joy_priority': timeout = None, priority = 100
+process[twist_marker-17]: started with pid [6778]
+[ INFO] [1559614629.320194411]: tf_lookup starting
+process[joystick_relay-18]: started with pid [6870]
+[ WARN] [1559614629.382991815]: Transformer::setExtrapolationLimit is deprecated and does not do anything
+[ INFO] [1559614629.454032838]: Loading robot model 'tiago'...
+[ INFO] [1559614629.454098203]: No root/virtual joint specified in SRDF. Assuming fixed joint
+process[joy_teleop-19]: started with pid [6980]
+process[joystick-20]: started with pid [7049]
+ERROR: cannot launch node of type [joy_teleop/incrementer_server]: can't locate node [incrementer_server] in package [joy_teleop]
+ERROR: cannot launch node of type [joy_teleop/incrementer_server]: can't locate node [incrementer_server] in package [joy_teleop]
+[ERROR] [1559614629.962474815]: Couldn't open joystick /dev/input/js0. Will retry every second.
+process[image_raw_to_rect_color_relay-23]: started with pid [7080]
+process[tuck_arm-24]: started with pid [7081]
+process[xtion/rgb/image_proc-25]: started with pid [7106]
+[INFO] [1559614630.334322, 0.000000]: Waiting for play_motion...
+[INFO] [1559614631.951226, 0.000000]: Controller Spawner: Waiting for service controller_manager/load_controller
+[INFO] [1559614631.952695, 0.000000]: Controller Spawner: Waiting for service controller_manager/load_controller
+[INFO] [1559614631.953695, 0.000000]: Controller Spawner: Waiting for service controller_manager/load_controller
+[INFO] [1559614631.954760, 0.000000]: Controller Spawner: Waiting for service controller_manager/load_controller
+[ INFO] [1559614632.336193993]: Loading robot model 'tiago'...
+[ INFO] [1559614632.336239235]: No root/virtual joint specified in SRDF. Assuming fixed joint
+[ INFO] [1559614632.383289361]: Loading robot model 'tiago'...
+[ INFO] [1559614632.383339633]: No root/virtual joint specified in SRDF. Assuming fixed joint
+[ INFO] [1559614632.815805708]: Publishing maintained planning scene on 'monitored_planning_scene'
+[ INFO] [1559614632.818478724]: MoveGroup debug mode is OFF
+Starting context monitors...
+[ INFO] [1559614632.818506584]: Starting scene monitor
+[ INFO] [1559614632.821067957]: Listening to '/planning_scene'
+[ INFO] [1559614632.821088932]: Starting world geometry monitor
+[ INFO] [1559614632.823553809]: Listening to '/collision_object' using message notifier with target frame '/base_footprint '
+[ INFO] [1559614632.825857801]: Listening to '/planning_scene_world' for planning scene world geometry
+[ WARN] [1559614632.826270463]: Resolution not specified for Octomap. Assuming resolution = 0.1 instead
+[ INFO] [1559614632.836021380]: Listening to '/attached_collision_object' for attached collision objects
+Context monitors started.
+[ INFO] [1559614634.159621716]: Initializing OMPL interface using ROS parameters
+[ INFO] [1559614634.314839785]: Using planning interface 'OMPL'
+[ INFO] [1559614634.537790138]: Param 'default_workspace_bounds' was not set. Using default value: 10
+[ INFO] [1559614634.539184887]: Param 'start_state_max_bounds_error' was set to 0.1
+[ INFO] [1559614634.539948613]: Param 'start_state_max_dt' was not set. Using default value: 0.5
+[ INFO] [1559614634.542375336]: Param 'start_state_max_dt' was not set. Using default value: 0.5
+[ INFO] [1559614634.544188674]: Param 'jiggle_fraction' was set to 0.05
+[ INFO] [1559614634.545787150]: Param 'max_sampling_attempts' was not set. Using default value: 100
+[ INFO] [1559614634.545903236]: Using planning request adapter 'Add Time Parameterization'
+[ INFO] [1559614634.545937021]: Using planning request adapter 'Fix Workspace Bounds'
+[ INFO] [1559614634.545971980]: Using planning request adapter 'Fix Start State Bounds'
+[ INFO] [1559614634.546027982]: Using planning request adapter 'Fix Start State In Collision'
+[ INFO] [1559614634.546073051]: Using planning request adapter 'Fix Start State Path Constraints'
+[ INFO] [1559614635.036093331]: Finished loading Gazebo ROS API Plugin.
+[ INFO] [1559614635.036609737]: waitForService: Service [/gazebo/set_physics_properties] has not been advertised, waiting...
+[ INFO] [1559614636.418216333, 0.022000000]: waitForService: Service [/gazebo/set_physics_properties] is now available.
+[ INFO] [1559614636.474437569, 0.076000000]: Physics dynamic reconfigure ready.
+[ INFO] [1559614637.622265895, 0.337000000]: Laser Plugin: Using the 'robotNamespace' param: '/'
+[ INFO] [1559614637.622311556, 0.337000000]: Starting Laser Plugin (ns = /)
+[ INFO] [1559614637.669555164, 0.337000000]: Laser Plugin (ns = /)  <tf_prefix_>, set to ""
+[ INFO] [1559614638.107773912, 0.337000000]: Camera Plugin: Using the 'robotNamespace' param: '/'
+[ INFO] [1559614638.111051079, 0.337000000]: Camera Plugin (ns = /)  <tf_prefix_>, set to ""
+[spawn_model-4] process has finished cleanly
+log file: /home/nucsim/.ros/log/d51d9eb6-866e-11e9-bf52-d89ef316b59d/spawn_model-4*.log
+[ INFO] [1559614638.258795007, 0.337000000]: Loading gazebo_ros_control plugin
+[ INFO] [1559614638.259096636, 0.337000000]: Starting gazebo_ros_control plugin in namespace: 
+[ INFO] [1559614638.259954368, 0.337000000]: gazebo_ros_control plugin is waiting for model URDF in parameter [/robot_description] on the ROS param server.
+[ INFO] [1559614638.611550655, 0.337000000]: Loading PAL HARWARE GAZEBO
+[ INFO] [1559614638.942404980, 0.337000000]: Joint mode switching is enabled
+      wrist_ft_link - arm_7_link
+      arm_tool_link - arm_7_link
+[ INFO] [1559614638.956592053, 0.337000000]: Parsed fake FT sensor: wrist_ft in frame: wrist_ft_link
+[ INFO] [1559614638.959267658, 0.337000000]: Parsed imu sensor: base_imu in frame: base_imu_link
+[ INFO] [1559614639.068355756, 0.337000000]: Loaded gazebo_ros_control.
+[ INFO] [1559614639.102474608, 0.337000000]: Loading gazebo WORLD ODOMETRY RPY plugin
+[ INFO] [1559614639.102707428, 0.337000000]: world odometry plugin missing <updateRate>, defaults to 1000.000000
+[INFO] [1559614639.204497, 0.337000]: Controller Spawner: Waiting for service controller_manager/switch_controller
+[INFO] [1559614639.205427, 0.337000]: Controller Spawner: Waiting for service controller_manager/switch_controller
+[INFO] [1559614639.206330, 0.337000]: Controller Spawner: Waiting for service controller_manager/switch_controller
+[INFO] [1559614639.206939, 0.337000]: Controller Spawner: Waiting for service controller_manager/unload_controller
+[INFO] [1559614639.207538, 0.337000]: Controller Spawner: Waiting for service controller_manager/switch_controller
+[INFO] [1559614639.207825, 0.337000]: Controller Spawner: Waiting for service controller_manager/unload_controller
+[INFO] [1559614639.209020, 0.337000]: Controller Spawner: Waiting for service controller_manager/unload_controller
+[INFO] [1559614639.209357, 0.337000]: Loading controller: hand_controller
+[INFO] [1559614639.209684, 0.337000]: Controller Spawner: Waiting for service controller_manager/unload_controller
+[INFO] [1559614639.210799, 0.337000]: Loading controller: joint_state_controller
+[INFO] [1559614639.211605, 0.337000]: Loading controller: imu_sensor_controller
+[INFO] [1559614639.212317, 0.337000]: Loading controller: force_torque_sensor_controller
+[ INFO] [1559614639.235306991, 0.337000000]: Initialized GazeboPalHey5 finger with actuator: hand_thumb_joint and virtual joints: hand_thumb_abd_joint hand_thumb_flex_1_joint hand_thumb_virtual_1_joint hand_thumb_flex_2_joint hand_thumb_virtual_2_joint 
+[INFO] [1559614639.331772, 0.337000]: Controller Spawner: Loaded controllers: hand_controller
+[INFO] [1559614639.364469, 0.337000]: Loading controller: torso_controller
+[INFO] [1559614639.385432, 0.337000]: Controller Spawner: Loaded controllers: imu_sensor_controller
+[INFO] [1559614639.404721, 0.337000]: Controller Spawner: Loaded controllers: force_torque_sensor_controller
+[ INFO] [1559614639.415873272, 0.337000000]: Initialized GazeboPalHey5 finger with actuator: hand_index_joint and virtual joints: hand_index_abd_joint hand_index_flex_1_joint hand_index_virtual_1_joint hand_index_flex_2_joint hand_index_virtual_2_joint hand_index_flex_3_joint 
+[ INFO] [1559614639.522688069, 0.337000000]: Initialized GazeboPalHey5 finger with actuator: hand_mrl_joint and virtual joints: hand_middle_flex_1_joint hand_middle_virtual_1_joint hand_middle_flex_2_joint hand_middle_virtual_2_joint hand_middle_flex_3_joint 
+[ INFO] [1559614639.623987558, 0.337000000]: Initialized GazeboPalHey5 finger with actuator: hand_mrl_joint and virtual joints: hand_ring_flex_1_joint hand_ring_virtual_1_joint hand_ring_flex_2_joint hand_ring_virtual_2_joint hand_ring_flex_3_joint 
+[ INFO] [1559614639.725838724, 0.337000000]: Initialized GazeboPalHey5 finger with actuator: hand_mrl_joint and virtual joints: hand_little_flex_1_joint hand_little_virtual_1_joint hand_little_flex_2_joint hand_little_virtual_2_joint hand_little_flex_3_joint 
+[INFO] [1559614639.732771, 0.338000]: Started controllers: hand_controller
+[ WARN] [1559614639.740016611, 0.338000000]: Called publishAsync but publisher thread has not been started, THIS IS NOT RT safe. You should start it yourself.
+[INFO] [1559614639.772020, 0.360000]: Loading controller: head_controller
+[INFO] [1559614639.773254, 0.361000]: Started controllers: imu_sensor_controller
+[INFO] [1559614639.774864, 0.361000]: Started controllers: force_torque_sensor_controller
+[INFO] [1559614639.818997, 0.392000]: Loading controller: arm_controller
+[INFO] [1559614639.873760, 0.434000]: Loading controller: mobile_base_controller
+[ INFO] [1559614639.919502650, 0.473000000]: Controller state will be published at 50Hz.
+[ INFO] [1559614639.921111755, 0.474000000]: Wheel separation will be multiplied by 1.
+[ INFO] [1559614639.922947317, 0.475000000]: Left wheel radius will be multiplied by 1.
+[ INFO] [1559614639.923005924, 0.475000000]: Right wheel radius will be multiplied by 1.
+[ INFO] [1559614639.924048031, 0.476000000]: Velocity rolling window size of 10.
+[ INFO] [1559614639.925492682, 0.477000000]: Velocity commands will be considered old if they are older than 0.25s.
+[ INFO] [1559614639.926342421, 0.478000000]: Allow mutiple cmd_vel publishers is enabled
+[ INFO] [1559614639.927437163, 0.478000000]: Base frame_id set to /base_footprint
+[ INFO] [1559614639.928423509, 0.478000000]: Odometry frame_id set to /odom
+[ INFO] [1559614639.929000903, 0.478000000]: Publishing to tf is enabled
+[ INFO] [1559614639.959833409, 0.490000000]: left wheel to origin: 0,0.2022, 0
+[ INFO] [1559614639.960400596, 0.490000000]: right wheel to origin: 0,-0.2022, 0
+[ INFO] [1559614639.960770411, 0.490000000]: Odometry params : wheel separation 0.4044, left wheel radius 0.0985, right wheel radius 0.0985
+[ INFO] [1559614639.965437440, 0.493000000]: Adding left wheel with joint name: wheel_left_joint and right wheel with joint name: wheel_right_joint
+[ WARN] [1559614639.981714704, 0.501000000]: updateConfig() called on a dynamic_reconfigure::Server that provides its own mutex. This can lead to deadlocks if updateConfig() is called during an update. Providing a mutex to the constructor is highly recommended in this case. Please forward this message to the node author.
+[ INFO] [1559614639.985130222, 0.503000000]: Dynamic Reconfigure:
+DynamicParams:
+	Odometry parameters:
+		left wheel radius: 1
+		right wheel radius: 1
+		wheel separation: 1
+	Publication parameters:
+		Publish executed velocity command: 0
+		Publication rate: 50
+		Publish frame odom on tf: 1
+[INFO] [1559614639.989421, 0.505000]: Controller Spawner: Loaded controllers: joint_state_controller, torso_controller, head_controller, arm_controller, mobile_base_controller
+[INFO] [1559614639.993275, 0.507000]: Started controllers: joint_state_controller, torso_controller, head_controller, arm_controller, mobile_base_controller
+[ INFO] [1559614640.155388192, 0.611000000]: Added FollowJointTrajectory controller for arm_controller
+[ INFO] [1559614640.457535427, 0.856000000]: Added FollowJointTrajectory controller for torso_controller
+[ INFO] [1559614640.758386357, 1.096000000]: Added FollowJointTrajectory controller for head_controller
+[ INFO] [1559614641.059091473, 1.330000000]: Added FollowJointTrajectory controller for hand_controller
+[ INFO] [1559614641.059251054, 1.330000000]: Returned 4 controllers in list
+[ INFO] [1559614641.080685234, 1.344000000]: Trajectory execution is managing controllers
+Loading 'move_group/ApplyPlanningSceneService'...
+Loading 'move_group/ClearOctomapService'...
+Loading 'move_group/MoveGroupCartesianPathService'...
+Loading 'move_group/MoveGroupExecuteService'...
+Loading 'move_group/MoveGroupExecuteTrajectoryAction'...
+Loading 'move_group/MoveGroupGetPlanningSceneService'...
+Loading 'move_group/MoveGroupKinematicsService'...
+Loading 'move_group/MoveGroupMoveAction'...
+Loading 'move_group/MoveGroupPickPlaceAction'...
+Loading 'move_group/MoveGroupPlanService'...
+Loading 'move_group/MoveGroupQueryPlannersService'...
+Loading 'move_group/MoveGroupStateValidationService'...
+[ INFO] [1559614641.245122003, 1.444000000]: 
+
+********************************************************
+* MoveGroup using: 
+*     - ApplyPlanningSceneService
+*     - ClearOctomapService
+*     - CartesianPathService
+*     - ExecuteTrajectoryService
+*     - ExecuteTrajectoryAction
+*     - GetPlanningSceneService
+*     - KinematicsService
+*     - MoveAction
+*     - PickPlaceAction
+*     - MotionPlanService
+*     - QueryPlannersService
+*     - StateValidationService
+********************************************************
+
+[ INFO] [1559614641.245200183, 1.444000000]: MoveGroup context using planning plugin ompl_interface/OMPLPlanner
+[ INFO] [1559614641.245231124, 1.444000000]: MoveGroup context initialization complete
+
+You can start planning now!
+
+[INFO] [1559614643.723505, 3.310000]: ...connected.
+[INFO] [1559614648.155073, 6.356000]: Tuck arm...
+[ INFO] [1559614648.182848590, 6.376000000]: Planning request received for MoveGroup action. Forwarding to planning pipeline.
+[ INFO] [1559614648.183032879, 6.376000000]: Starting state is just outside bounds (joint 'torso_lift_joint'). Assuming within bounds.
+[ INFO] [1559614648.183070786, 6.376000000]: Starting state is just outside bounds (joint 'arm_1_joint'). Assuming within bounds.
+[ INFO] [1559614648.215564366, 6.399000000]: Planner configuration 'arm_torso' will use planner 'geometric::RRTConnect'. Additional configuration parameters will be set when the planner is constructed.
+[ INFO] [1559614648.230261760, 6.409000000]: RRTConnect: Starting planning with 1 states already in datastructure
+[ INFO] [1559614648.242433853, 6.418000000]: RRTConnect: Created 5 states (2 start + 3 goal)
+[ INFO] [1559614648.242501767, 6.418000000]: Solution found in 0.012645 seconds
+[ INFO] [1559614648.319216059, 6.463000000]: SimpleSetup: Path simplification took 0.076581 seconds and changed from 4 to 2 states
+[ INFO] [1559614648.321609862, 6.464000000]: Planning adapters have added states at index positions: [ 0 ]
+[INFO] [1559614662.820813, 16.356000]: Arm tucked.
+[tuck_arm-24] process has finished cleanly
+log file: /home/nucsim/.ros/log/d51d9eb6-866e-11e9-bf52-d89ef316b59d/tuck_arm-24*.log
