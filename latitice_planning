@@ -1,0 +1,85 @@
+https://mp.weixin.qq.com/s?__biz=MzI1NjkxOTMyNQ==&mid=2247485354&idx=1&sn=c8f65591fe727904a8e1e440fb6827b9&chksm=ea1e15d8dd699cce46d296ede37177ccc8cc2f6c275ebd5c5b2f8008248f7d64de201e6ee1bf&scene=21#wechat_redirect
+
+https://www.cnblogs.com/fuhang/p/9563884.html
+
+https://www.cnblogs.com/fuhang/p/9848992.html
+
+https://www.cnblogs.com/fuhang/p/9836584.html
+
+http://wiki.ros.org/sbpl_lattice_planner
+
+https://github.com/ros-planning/navigation_experimental
+
+http://wiki.ros.org/sbpl
+
+https://github.com/sbpl/sbpl
+
+https://github.com/marinaKollmitz/lattice_planner
+
+https://github.com/marinaKollmitz/lattice_planner/wiki/Limitations-and-Known-Issues
+
+https://github.com/marinaKollmitz/human_aware_navigation/wiki/2.-Run-the-Human-Aware-Navigation
+
+
+lattice_planner
+
+The lattice_planner package provides a move_base global planner plugin for a time-bounded A* lattice planner. The planner is designed to plan time dependent, dynamically feasible navigation paths for robots with differential drive constraints. It uses a dynamic cost map which is based on the ROS costmap representation from the costmap_2d package.
+
+the following ROS Parameters can be specified for the lattice_planner:
+
+prefix for all ROS params: move_base/TBLattice/
+
+cost factors:
+
+    lethal_cost --> cost associated with forbidden areas (e.g. obstacles)
+    time_cost_factor --> cost factor for path execution time
+    step_cost_factor --> cost factor for path length
+    rotation_cost_factor --> cost factor for the accumulated turns along a planned path
+    environment_cost_factor --> cost factor for constraints defined in the dynamic environment, according to the dynamic cost map
+    dynamic_layers_plugin --> fully qualified plugin type for dynamic layers to be used (must adhere to lattice_planner::DynamicLayers interface. See pluginlib doc on ROS wiki for help)
+
+planner preferences:
+
+    allow_unknown --> whether the planner is allowed to expand into unknown map regions
+    xy_goal_tolerance --> the Euclidean goal tolerance distance in meters
+    yaw_goal_tolerance --> the rotational goal tolerance in rad
+    time_resolution --> time resolution of the discretized configuration space in seconds
+    collision_check_time_resolution --> time increment to slice trajectories for collision checking in seconds
+    time_steps_lookahead --> maximum number of time steps for planning
+    planning_timeout --> timeout for the planning after which the best solution found so far is returned
+    passive_navigation --> flag for planning dynamically for the max number of time steps, not only until the goal is found
+    publish_expanded --> flag for publishing the expanded search tree for visualization
+
+flags for simplifying the path search - violate optimality but accelerate the search procedure:
+
+    easy_deceleration --> flag for simplified planning of deceleration at the goal
+    easy_turn_at_start --> flag for simplified planning of turn in place at the start
+    easy_turn_at_goal --> flag for simplified planning of turn in place at the goal
+
+motion constraints of the robot:
+
+    min_vel_x --> minimum forward velocity of the robot in meters per second (can be negative)
+    max_vel_x --> maximum forward velocity of the robot in meters per second
+    acceleration_x --> forward acceleration in meters per second^2
+    min_vel_phi --> minimum angular velocity of the robot in radians per second (can be negative)
+    max_vel_phi --> maximum angular velocity of the robot in radians per second
+    acceleration_phi --> angular acceleration in radians per second^2
+
+Limitations and Known Issues
+Marina Kollmitz edited this page on Sep 16, 2015 · 2 revisions
+Map Size
+
+The lattice_planner was originally designed to plan social navigation paths (see human_aware_navigation repository) in home environments. Very big maps, for example maps that cover entire company buildings over multiple floors, cannot be handled by the planner. Every planning cycle starts with the calculation of the heuristic for planning by doing a 2D Dijkstra expansion over the entire map to find the shortest possible path from every cell in the map to the goal. If the map is very big, this expansion can take up the entire time allocated for planning. Therefore, there is no time left to expand the search tree and a path from the start to the goal cannot be found, even if the distance between them is very small. If that happens, the lattice_planner will report: "no path found within 0 cycles".
+Planner Preferences
+
+Time dependent planning tends to be computationally expensive, especially for robots with differential drive constraints due to the high dimension of the planning space (x,y,theta,t). Furthermore, we represent dynamic constraints (maximum accelerations), which results in a 6D planning space which also includes the robot velocities: (x,y,theta,v,omega,t) Therefore, the lattice_planner has some limitations to keep the planning time acceptable.
+
+It is important to keep the size of the discretized planning space reasonable. In practice, this means that the planning look-ahead should not be too large. Usually, it can cope with 10-20 prediction steps (time_steps_lookahead param). The look-ahead time depends on the specified time resolution (time_resolution param). A good value for the resolution is 0.5 seconds. Significantly smaller resolutions cause a very large planning space. Furthermore, since one planning cycle corresponds to the specified time resolution, the planner will need many planning cycles to make progress towards the goal. The specified robot accelerations (acceleration_x and acceleration_phi params) determine how many time steps are required to reach the specified robot velocities (min_vel_x, max_vel_x, min_vel_phi and max_vel_phi params). The accelerations thus determine how many discrete velocities the planner can represent. Planning can be problematic if the acceleration (or the time resolution) is very small or if the maximum velocity is very large, because the planner has to consider a large number of possible discrete velocities. Ideally, the accelerations and velocities should be specified in a way that it takes 1 or 2 time steps to go from minimum to maximum velocity (velocity_(i+1) = velocity_i + acceleration * time_resolution).
+
+To simplify the planning procedure, set the planning params easy_deceleration, easy_turn_at_start or easy_turn_at_goal to true. The flags violate the solution optimality but accelerate the search procedure.
+Incomplete Paths
+
+The planner might produce incomplete paths because it is unable to expand the goal state before the planning time expires.
+
+The published, incomplete path is the path to the best state found so far. Therefore, the robot is likely to proceed towards the goal and should eventually find a complete path. However, it is possible that the robot gets stuck. It can get into situations where it can never find a complete path before the planning time runs out. This will result in the robot moving around "randomly" and never making progress towards the goal. If that happens to you in a lot of situations, consider to lower the planning frequency and to enlarge the planning timeout to give the planner more time to find a path. A very weak PC might also cause this problem.
+
