@@ -1,0 +1,1446 @@
+https://www.cnblogs.com/zcjboke/p/5513136.html
+
+第一章：Linux设备驱动概念及基础
+
+1.1. 设备驱动的分类
+字符驱动
+块驱动
+网络驱动
+1.2 硬件基础
+中央处理器结构的分类：
+
+冯诺依曼：指令和数据合并在一起，数据宽度相同（Intel和arm7）
+哈弗：指令和数据分开，可以有不同的数据宽度（arm9-cortex系列）
+通用处理器分类：
+
+为控制器(MCU)，又称单片机
+微控制器(MPU)
+DSP分类：定点DSP和浮点DSP
+
+浮点用硬件来实现，处理速度高于定点
+定点DSP只能用定点运算来模拟浮点运算
+指令集分类：
+
+精简指令集（RISC）,目标代码大（arm，powerPC，MIPS）
+复杂指令集（CISC）,目标代码小
+存储器分类： 
+ROM:
+
+NOR：类SRAM接口，不需要增加额外的外部电路，程序可芯片内执行，可spi访问
+NAND：与CPU需要电路转换，以块方式访问，不可芯片内执行，容量大，价格低
+RAM:
+
+DPRM：连个端口同时访问，两套完全独立的数据总线、地址总线和读写控制线，可用于两个处理器间交换数据，速度快，实时性强
+CAM：以内容进行寻址的存储器，一种特殊的存储阵列RAM，可执行数据匹配。
+FIFO：先进先出，用于数据缓存，同一时刻只能设置为一边输入一边作为输出
+PCI总线：
+
+PCI：Intel推出，32位可扩展64位，总线操作与处理器-存储器子系统操作并行，规范独立于微处理器，通用性好，
+PCI总线1：PCI-PCI桥的下游
+PCI总线0：PCI-PCI总线的上游
+PCI配置空间：制造商标识、设备标识、分类码、申请存储器空间、申请IO空间以及中断资源申请·
+PCI-E：采用点对点串行链接，每个设备都有自己的专用连接，串行方式传输数据，不需要向整个总线申请宽带
+仪器仪表： 
+1、示波器
+
+三种模式：自动模式、常规模式以及单次模式
+自动模式：根据设定的扫描速率自动进行扫描，当有触发发生时，扫描系统会尽量按照信号的频率进行扫描。不论触发条件是否满足都会进行扫描，都会看到扫描下，对信号的特点不是很了解时候选择这种模式
+常规扫描：触发条件满足开始扫描
+单次扫描：触发条件满足扫描，但只扫描一次
+
+《Linux4.0设备驱动开发详解》笔记--第二章：Linux内核及内核编程
+
+2.1 Linux内核发展及演变
+1991年10月5日 Linus Torvalds创建
+五个支柱：Unix系统、Minix系统、GNU计划、POSIX标准和Internet
+每2-3个月更新一次大的版本号
+2.2 Linux2.6后的内核特点
+新的调度器：高负荷下的出色性能，更好的处理器扩展，采用CFS算法，新增调度类：SCHED_DEADLINE，它实现了EDF(最早截止期限优先)算法
+内核抢占：提高系统的实时性，增强系统的交互性，但也有不可抢占的空间：中断上下文、软中断上下文和自旋锁的区间，如果打上RT-Preempt补丁，即可支持硬实时。
+改进线程模型：采用NPTL（本地POSIX线程库）模型，操作速度极大提高，更加遵循POSIX规范
+虚拟化内存变化：融合了r-map（反向映射，通过页结构快速找到页面的映射）技术，改善虚拟内存在一定大小负载下的性能
+文件系统：新增基于B树的Btrfs，是下一代的Linux文件系统
+音频：高级Linux音频体系结构ALSA取代缺陷很多的OSS，支持USB音频和MIDI设备，并支持双工重放等功能
+Linux3.7以后实现一个Linux可以适用于所有的arm系统
+2.3 Linux内核组成
+2.3.1 Linux内核代码的目录结构
+
+arch：和硬件体系结构相关的代码，每个平台每个目录
+block：块设备驱动的I/O调度
+crypto：常用加密和散列算法，还有一些压缩以及CRC校验算法
+documentation：内核各部分的通用解释和注释
+fs：支持的各种文件系统
+include：内核API级别的头文件，与系统相关的头文件放在include/linux子目录下
+init：内核代码的初始化代码
+ipc：进程间通信代码
+lib：库文件代码
+mm：内存管理代码
+script：配置内核的脚本文件
+usr：用于打包和压缩的cpio等
+2.3.2 内核组成部分
+
+进程调度：多数进程是由用户空间创建，通过系统调用进入内核空间，内核编程是可以启动内核线程来处理并发任务，这些线程没有用户空间
+内存管理：控制多个进程安全的共享内存区域，通过MMU完成进程从虚拟空间向物理空间的转换
+虚拟文件系统：隐藏各个硬件的具体细节，为所有的设备提供了统一的接口，是文件系统的抽象
+网络接口：对各种网络标标准的存取和各种网络硬件的支持，分为网络协议和网络驱动程序
+进程间通信：信号量、共享内存、消息队列、管道以及Unix域套接字等
+2.3.3 内核空间和用户空间
+
+内核可以进行任何操作，但应用程序被禁止对硬件的直接访问和对内存的未授权访问
+这两个名词用来区分程序执行的两种不同的状态，他们使用不同的地址空间，用户空间可以通过系统调用和硬件中断来访问内核空间
+2.4 内核的编译及加载
+2.4.1 Linux内核配置系统组成
+
+Makefile：分布于内核源代码
+配置文件（Kconfig）：给用户提供配置选项
+配置工具：命令解析器和配置用户界面，都是脚本语言
+通过make config、make menuconfig生成.config文件记录哪部分被编入内核，哪部分被编译成模块
+source可以引入每一层的Kconfig
+2.4.2 Kconfig和Makefile
+
+2.4.2.1linux增加程序需要完成以下3项工作
+
+将编写的源码复制到Linux内核源代码相应得目录中
+在目录的Kconfig文件中增加关于源代码相应的编译配置选项
+在目录的Makefile文件中增加对新源代码的编译条目
+2.4.1.2Makefile语法规则
+
+目标定义：用来定义哪些内容要作为模块编译，哪些要编译并链接进内核，如：obj-y/m/n += foo.o，obj-$(CONFIG_ISDN) += isdn.o
+多文件模块的定义：如下，模块名为ext2，有balloc.o、dir.o等目标文件最终链接生成ext2.o直至ext2.ko文件，是否包含xattr.o、acl.o等文件取决于内核配置文件的配置情况。
+obj-$(CONFIG_EXT2_FS) += ext2.o
+ext2-y :=balloc.o dir.o file.o ...
+ext2-$(CONFIG_EXT2_FS_XATTR) += xattr.o xattr_user.o ...
+ext2-$(CONGIF_EXT2_FS_XIP) += xip.o
+目标层次迭代：如下， 当CONFIG_EXT2_FS的值为y或者m时，kbuild将会把ext2目录列入向下的目录中
+obj-$(CONFIG_EXT2_FS) += ext2/
+2.4.2.3Kconfig语法规则
+
+配置选项
+
+大多数内核配置选项对应的Kconfig中的一个配置选项，”config” 关键字定义新的配置选项，之后的几行代码定义了诶配置选项的属性。配置选项的属性包含：类型，数据提示，依赖关系，选择关系以及帮助信息、默认值等
+
+config MODVERSIONS
+    bool "Module versioning support"
+    help
+        Usually, you have to use modules compiled with your kernel.
+        Saying Y here makes it ...
+每个配置选择必须包含指定的类型，包括bool，tristate, string, hex 和int，其中tristate和string是基本的类型，其他类型都是基于这两种类型，类型定以后可以紧跟输入提示，下面两段脚本是等价的
+bool "Networking support"
+和
+bool
+prompt "Networking support"
+输入提示的一般格式为以下形式，其中可选的if用来表示该提示的依赖关系。
+prompt <prompt> [if <expr>]
+默认值的格式为以下形式，如果用户不设置对应的选项则配置选项的值就是默认值
+
+default <expr> [if <expr>]
+依赖关系的格式为以下形式，多重依赖中间要用“&&”间隔
+depends on (或者requires) <expr>
+依赖关系也可以用在菜单中的其他选项，如下两段脚本是等价的
+
+bool "foo" if BAR
+default y if BAR
+和
+depends on BAR
+bool "foo"
+default y
+选择关系的格式如下，如果A选择了B，那么A选中的情况下自动选中B
+select <symbol> [if <expr>]
+数据范围格式如下
+range <symbol> <symbol> [if <expr>]
+Kconfig中的expr定义如下
+<expr> :: <symbol>
+            <symbol> '=' <symbol>
+            <symbol> '!' <symbol>
+            '(' <expr> ')'
+            '!' <expr>
+                <expr> '&&' <expr>
+                <expr> '||' <expr>
+symbol分为两类，一类由菜单入口配置项定义的非常数symbol，另一类是作为expr组成部分常数symbol。比如
+
+config SHDMA_R8A73A4
+       def_bool y
+       depends on ARCH_R8A73A4 && SH_DMA != n
+表达式“depends on ARCH_R8A73A4 && SH_DMA !=n”暗示只有当ARCH_R873A4被选中，而SH_DMA没有选中的时候，才可能出现这个SHDMA_R8A73A4。
+
+为int和hex类型的选项设置可以接受的输入值范围，用户只能输入大于等于第一个symbol，且小于等于第二个symbol的值
+帮助信息的格式为
+help(或---help---)
+    开始
+    ...
+    结束
+菜单结构
+
+配置选项在菜单结构的中的位置可有两种方法决定。 
+第一种方法为：
+
+menu "Network device support"
+    depends on NET
+config NETDEVICES
+    ...
+所有处于“menu”和“endmenu”中的选项都会成为“Network device support”的子菜单，而且，所有的子菜单（config）选项都会继承父菜单（menu）的依赖关系，比如，“Network device support”对“NET”的依赖会被加载到配置选项NETDEVICES的依赖列表中。 
+注意：menu后面跟的“Network device support”项仅仅是一个菜单，没有对应真实的匹配项，也不具备不同的三种状态，这与config的区别。
+
+另一种方法为： 
+同过分析依赖关系生成菜单结构。如菜单项在一定程度上依赖与前面的选项，他就能成为该选项的子菜单。如果父选项为“n”，子选项不可见；如果父选项可见，子选项才可见。例如：
+
+config MODULES
+    bool "Enable loadable module support"
+
+config MODVERSIONS
+    bool "Set version information on all module symbol"
+    depends on MODULES
+
+comment "module support disabled"
+    depends on !MODULES
+MODVERSIONS直接依赖MODULES,只有MODULES不为“n”时，该选项才可见。 
+除此之外，Kconfig中还可能使用“choices … endchoice”、”comment”、“if…endif”这样的语法结构。其中“choices … endchoice”的结构
+
+choice
+<choice options>
+<choice block>
+endchoice
+它定义一个选择群，其接受的选项（choice potions）可以是前面描述的任何属性，例如，LDD6410的VGA输出分辨率可以是1024*768或者是800*600，在driver/video/samsung/Kconfig中就定了如下choice
+
+choice
+depends on FB_S3C_VGA
+prompt "Select VGA Resolution for S3C Framebuffer"
+default FB_S3C_VGA_1024_768
+config FB_S3C_VGA_1024_768
+    bool "1024*768@60Hz"
+    ---help---
+    TBA
+config FB_S3C_VGA_640_480
+    bool "640*480@60Hz"
+    ---help---
+    TAB
+endchoice
+上述例子中，prompt配合choice起到提示的作用。 
+具体例子见《Linux设备驱动开发详解》第三版 P72-73
+
+2.4.3 Linux内核的引导
+
+上电 => SOC嵌入bootrom 引导=> CPU0上的bootloader
+其他非CPU0进入WFI状态等待CPU0唤醒
+CPU0引导bootloader唤醒非CPU0，唤醒后和CPU0都投入运行
+CPU0导致用户空间的init程序被调用，init派生出其他进程，其他进程在派生出其他进程
+bootloader代表为uboot，其代码仓库：http://git.devx.de/u-boot.git/
+zimage：是由未压缩的解压算法和压缩的内核组成，bootloader负责解压
+
+《Linux4.0设备驱动开发详解》笔记--第三章：Linux下的C编程特点
+
+3.1 Linux编码风格
+参考文章：Documentation/CodingStyle
+缩进用TAB
+{}使用： 
+对于结构体、if、for、while以及switch语句，“{”不另起一行
+如果if、for循环后只有1行，不要加“{”和“}”
+if和else混合用的时候，else语句不另起一行
+对于函数，“{”另起一行
+switch和case对齐
+3.2 GNU C与ANSI C
+零长度和变量长度数组
+struct var_data {
+    int len;
+    char data[0]
+};
+
+int main(int argc, char *argv[])
+{
+    int i, n = argc;
+    double x[n];
+
+    for(i=0; i<n; i++)
+        x[i] = i;
+
+    return 0;
+}
+case范围：支持case x … y这样的语法，区间[x,y]中的数都会满足这个case条件
+语句表达式：包含在括号里的语句看成一个表达式，它可以出现在任何允许表达式的地方。
+typeof关键字：其可以获得x的类型，因此可以借助typedef来定义min这个宏
+#define min(x,y) （{
+    const typeof(x) _x = (x);  \
+    const typeof(y) _y = (y);  \
+    (void) (&_x == &_y);       \
+    _x < _y ? _x : _y;         \
+}）
+可变参数宏，标准C就支持可变参数函数，意味着函数的参数是不固定的，如printf()函数，GNU C 中宏也可以接受可变参数目的参数，如
+#define pr_debug(fmt,arg...)  \
+            printf(fmt,##arg)
+这里的arg表示其余的参数，可以是零个或多个，##是为了处理arg不代表任何参数的情况，这时候前面的逗号就显得多余了，使用##之后，CNU C 就会预处理会丢掉前面的逗号，这样
+
+pr_debug("success!\n");
+扩展为：
+printk("success!\n");
+标号元素：允许数组和结构体的元素初始化的顺序任意顺序出现。 
+数组初始化方式为在初始化值前添加”[INDEX]=”,或者用”[FIRST … LAST]=”的形式指定一个范围。
+unsigned char data[MAX] = {[0 ... MAX] = 0};
+结构体初始化方式
+
+struct file_operations ext2_file_operation = {
+    .llseek = generic_file_llseek,
+    .read = generic_file_read,
+    ...
+};
+当前函数名：FUNCTION或者func保存当前函数的名字
+特殊属性声明：GUN C允许申明函数、变量和类型的特殊属性，以便手动优化和定制代码检查的方法，申明方法：在申明后加上attribute((ATTRIBUTE)). ATTRIBUTE为属性说明，若存在多个则逗号隔开。
+内建函数：不属于标准库的内建函数通常以__builtin开始
+do{} while语句：其主要用于宏定义中，为了保证宏定义的使用者不会出现编译错误，他不对其他使用则做任何假设。
+goto语句：一般只限于错误处理中
+
+4.1 内核模块程序结构
+加载：insmod，modprobe(同时加载模块的依赖模块)
+卸载：rmmod
+查看已加载的模块及模块间的依赖关系：lsmod，实际上是分析/proc/modules文件
+已加载的模块信息放在/sys/module目录下，没加载一个模块就会在该目录下生成一个以模块名命名的目录，“tree -a”可获取目录树
+模块许可声明：申明许可权限，否则将收到内核被污染警告，一般申明为MODULE_LICENSE(“GPL v2”)语句申明采用GPL v2.
+模块参数（可选）：模块被加载的时候可以传递给它的值，它本身对对应模块的内部的全局变量
+模块导出符（可选）：其他模块可以使用模块导出的函数和变量
+模块作者等信息声明
+4.2 模块加载函数
+Linux内核模块加载函数一般以__init标识申明，如
+static int __init initialization_function(void)
+{
+    /*初始化代码*/
+}
+module_init(initialization_function);
+初始化成功返回0，否则返回错误码。
+
+request_module(const char* fmt, …)：灵活加载内核模块
+数据也可以定义为__initdata，只是在初始化的阶段需要的数据，结束后释放占用的内存
+4.4 模块卸载函数
+一般以__exit标识申明，如
+
+static void __exit cleanup_function(void)
+{
+    /*释放代码*/
+}
+module_exit(cleanup_function);
+被直接编译进内核的模块的卸载函数会被省略，不编译进内核，因为模块被内置了，也就不会被卸载。
+
+4.5 模块参数
+module_param(参数名，参数类型，参数读写权限)：为模块定义一个参数，如下定义一个int参数和char指针参数
+static char *book_name = "dissecting Linux Deice Driver";
+module_param(book_name, char, S_IRUGO);
+
+static int book_num = 4000;
+module_param(book_num, int, S_IRUGO);
+“insmod (或modprobe) 模块名 参数名 = 参数值”，不传递则用缺省值，模块被内置时用bootloader通过bootargs里设置“模块名.参数 = 值”给内置模块传递参数。
+
+参数数组：module_param_array(数组名，数组类别，数组长度，参数读写权限)
+/sys/module下有已加载模块命名的目录，当“参数读写权限”为0，则此参数不存在sysfs文件系统下对应的节点，否则此模块的目录下会出现parameter目录，其中包含以参数名命令的文件节点，文件权限与设定的权限一致。
+允许insmod和modprobe命令时，用逗号隔开输入的数组元素
+例：定义两个参数的模块
+/*======================================================================
+    A kernel module: book
+    This example is to introduce module params
+
+    The initial developer of the original code is Baohua Song
+    <author@linuxdriver.cn>. All Rights Reserved.
+======================================================================*/
+#include <linux/init.h>                                
+#include <linux/module.h>                                
+MODULE_LICENSE("Dual BSD/GPL");                                
+
+static char *book_name = "dissecting Linux Device Driver";              
+static int num = 4000;                                
+
+static int book_init(void)                                
+{                                
+    printk(KERN_INFO " book name:%s\n",book_name);                        
+    printk(KERN_INFO " book num:%d\n",num);                               
+    return 0;                                
+}                                
+static void book_exit(void)                                
+{                                
+    printk(KERN_INFO " Book module exit\n ");                            
+}                                
+module_init(book_init);                                
+module_exit(book_exit);                                
+module_param(num, int, S_IRUGO);                                
+module_param(book_name, charp, S_IRUGO);
+
+MODULE_AUTHOR("Song Baohua, author@linuxdriver.cn");
+MODULE_DESCRIPTION("A simple Module for testing module params");
+MODULE_VERSION("V1.0");
+通过insmod加参数和不加参数实验，在/var/log/messages文件中查看内核的输出 
+在/sys/module/book/parameters目录下输入tree查看参数文件节点
+
+4.6 导出符号
+/proc/kallsyms文件记录了符号及符号所在的内存地址
+导出符号：EXPORT_SYSBOL(符号名)，EXPORT_SYSBOL_GPL(符号名)（只适用于包含GPL许可权的模块）
+例：
+/*======================================================================
+    A simple kernel module to introduce export symbol
+
+    The initial developer of the original code is Baohua Song
+    <author@linuxdriver.cn>. All Rights Reserved.
+======================================================================*/
+#include <linux/init.h>                                
+#include <linux/module.h>                                
+MODULE_LICENSE("Dual BSD/GPL");                                
+
+int add_integar(int a,int b)                                
+{                                
+    return a+b;                             
+} 
+
+int sub_integar(int a,int b)                                
+{                                
+    return a-b;                             
+}                            
+
+EXPORT_SYMBOL(add_integar);
+EXPORT_SYMBOL(sub_integar);
+4.7 模块申明与描述
+MODULE_AUTHOR(author);
+MODULE_DESCRIPTION(description);
+MODULE_VERSION(version_string);
+MODULE_DEVICE_TABLE(table_info);
+MODULE_ALIAS(alternate_name);
+对于USB, PCI等设备驱动，通常创建一个MODULE_DEVICE_TABLE来表明驱动模块支持的设备
+4.8 模块的使用计数
+try_module_get(&module)和module_put(&module)：模块计数管理接口
+try_module_get(&module)：增加模块使用计数，返回0，调用失败，希望使用的的模块不存在或正在被卸载
+module_put(&module)：减少模块使用计数
+模块的使用计数一般不由模块本身管理，由内核更底层的代码（总线驱动或者此类设备共用的核心模块）来实现，以简化驱动开发
+当设备正在使用的时候，模块不可以被卸载
+4.9 模块编译
+Makefile
+模块包含多个.c文件，则Makefile写法
+obj-m := modulename.o
+modulename-objs := file1.o file2.o ...
+
+《Linux4.0设备驱动开发详解》笔记--第五章：Linux文件系统与设备文件
+
+5.1 Linux文件操作
+5.1.1 文件操作系统调用
+
+创建
+int create(const char *filename, mode_t mode);  
+mode是存取权限，它同umask（在文件创建时需要去掉的一些权限）一起共同决定文件的最终权限 
+mode：O_…组合 
+- 打开
+
+int open(const char *pathname, int flags);
+int open(const char *pathname, int flags, mode_t mode);
+如果flags使用了O_CREAT标志，则使用第二个函数，指明创建并打开的文件权限 
+数字表示权限的含义 
+第一位 第二位 第三位 第四位 第五位 
+用户ID 组ID 自己的权限 组的权限 其他人的权限 
+例如：创建用户可读写执行，组没有权限，其他人可读执行 => 10 705
+
+open("test", O_CREAT, 10 705);
+等价于
+open("test", O_CREAT, S_IRWXU | S_IROTH | S_IXOTH | S_ISUID);
+读写
+int read(int fd, const void *buf, size_t length);
+int write(int fd, const void *buf, size_t length);
+定位
+int lseek(int fd, offset_t offset, int whence);
+SEEK_SET：相对于文件开头 
+SEEK_CUR：相对于当前指针 
+SEEK_END：相对于文件末尾 
+offset：可为负数 
+lseek(fd, 0, SEEK_END);表示文件的长度
+
+关闭
+int close(int fd);
+5.1.2 库函数操作
+
+创建和打开
+FILE *fopen(const char *path, const char *mode);
+mode : r w b 组合 
+linux不区分文本文件和二进制文件
+
+读写
+int fgetc(FILE *stream);
+int fputc(int c, FILE *stream);
+char *fgets(char *s, int n, FILE *stream);
+int fputs(const char *s, FILE *stream);
+int fprintf(FILE *stream, const char *format,...);
+int fscanf(FILE *stream, const char *format,...);
+size_t fread(void *ptr, size_t size, size_t n, FILE *stream);
+size_t fwrite(void *ptr, size_t size, size_t n, FILE *stream);
+关闭
+int fclose(FILE *stream);
+5.2 Linux文件系统
+5.2.1 Linux文件系统目录结构
+
+/bin：包含基本命令，如ls、cp等
+/sbin：系统命令，如modprobe、ifconfig等
+/dev：设备文件存储目录，应用文件通过对这些文件的读写来控制实际设备
+/etc：系统配置文件，如账号密码的配置文件，busybox的启动脚本也在这里
+/lib：系统库文件
+/mnt：挂载目录，如cdrom等目录
+/proc：系统运行时，进程及内核信息（CPU、硬盘分区、内存信息等）存放在这里。/proc目录是为文件系统proc的挂载目录，proc不是真正的文件系统，它存在内存中
+/tmp：存放运行程序是产生的临时文件
+/usr：系统存放程序的目录，如用户命令、用户库等
+/sys：sysfs文件系统的映射目录，Linux设备驱动模型中的总线、驱动和设备都可以在该目录下找到对应的节点。当内核检测到新设备时，会在sysfs文件系统中为该设备生成一项新的记录
+5.2.2 Linux文件系统与设备驱动
+
+file：代表一个打开的文件，每个打开的文件在内核中都有一个关联的struct file。
+inode：包含文件访问权限、属主、组、大小、生成时间、访问时间、最后修改时间等信息
+stat + 文件名 =>查看文件的inode信息
+inode成员i_rdev字段包含设备号：前12是主设备号，后20位是此设备号 
+unsigned int ininor(struct inode *inode)
+unsigned int imajor(struct inode *inode)
+cat /proc/devices：查看系统注册的设备 
+第一列为主设备号
+第二列为此设备号
+/dev/目录中包含有设备文件
+参考 
+http://www.cnblogs.com/itech/archive/2012/05/15/2502284.html
+5.3 devfs
+Linux2.4内核引进，但现在已经由udev取代
+5.4 udev用户空间设备管理
+5.4.1 udev与devfs区别
+
+机制与策略 
+机制：做某件事的方法，相对固定不变
+策略：每个步骤采取的方法，灵活不固定
+内核中不应该出现策略
+udev是利用设备的加入或者移除的时候内核所发送的热拔插事件来工作 
+热拔插时设备的详细信息会由内核通过netlink套接字来发送出uevent事件
+udev对冷拔插的处理 
+Linux提供sysfs下面1个uevent节点，往该节点下写一个“add”,导致内核重新发送netlink，之后udev就会收到冷拔插的netlink消息了
+5.4.2 sysfs系统与Linux设备模型
+
+sysfs是与proc、devfs和devpty同类别的虚拟文件系统，它可以产生包括所有的硬件系统的层级视图
+sysfs把连接在系统上的设备和总线组织成一个分级的文件，他们可以由用户空间存取，向用户空间导出内核数据结构以及他们的属性
+sysfs的一个目的是展示设备驱动模型中各组件的层次关系，顶层目录包括 
+block：所有的设备快
+bus：所有的总线类型
+dev
+devices
+class：系统中的设备类型（如网卡设备、声卡设备、输入设备等）
+fs
+kernel
+power
+bus_type表示总线，device_driver表示驱动，device表示设备
+设备和驱动必须依附于总线 
+设备和驱动是独立分开注册的，注册设备的时候不需要其驱动已经注册，反之亦然
+设备和驱动各自共享·涌向内核，寻找自己的另一半，总线通过match()函数匹配两者
+匹配成功会调用xxx_driver的probe函数（xxx是总线的名字，如PCI、spi、USB等）
+总系、设备和驱动最终落实为sysfs中的一个目录，其attribute则落实为目录下的文件 
+总线、设备和驱动实际上可以认为是kobject的派生类，kobject可以看作是总线、设备和驱动的抽象类
+1个kobject对应着sysfs的一个目录
+attribute包好show和store两个函数，其用于attribute对应的sysfs的文件读写
+事实上，sysfs的目录源于bus_type、device_driver和device，而目录中的文件则来源于attribute
+例如：在driver/base/bus.c文件中找到这样的代码
+static BUS_ATTR(driver_prove, ...);
+static BUS_ATTR(driver_autoprove, ...);
+static BUS_ATTR(uevent, ...);
+而在/sys/bus/platform等里面可以找到对应的文件
+
+$ls
+devices drivers drivers_autoprove drivers_probe uevent
+udev的组成
+udev目前和systemd项目合并在一起了
+udev在用户空间中执行，动态的建立或删除设备的文件，允许每个人都不用关心主次设备号而提供LBS（Linux标准规范）名字，并且根据需要固定名称
+udev的工作过程 
+当内核检测到系统中出现了新的设备的时候，内核会通过netlink套接字发送uevent
+udev获取内核发送的信息，进行规则的匹配 
+匹配的事物包括：SUBSYSTEM、ACTION、attribute、内核提供的名称（通过KETNEL=）以及其他的环境变量
+例如：在Linux系统上插入Kingston的U盘，通过udev的工具“udevadm monitor–kernel –property –udev”捕获到uevent包含的信息（包括U盘的设备商、U盘的类型、设备编号等等），根据这些信息创建一个规则，以便在插入的时候，为该U盘创建一个/dev/KingstomUD的符号链接
+SUBSYSTEM=="block", ACTION=="add", KERNEL=="*sd", ENV{ID_TYPE}=="disk", ENV{ID_VENDOR}=="Kingston", ENV{ID_USB_DRIVER}=="usb-storage", SYMLINK+="kingstonUD"
+插入U盘后就会自动的在/dev/下面创建一个符号链接
+
+5.4.4 udev 规则文件
+
+规则文件一行为单位，以“#”为行代表注释符，其余的每一行代表一个规则
+每个规则分成一个或多个匹配部分和赋值部分 
+匹配部分和赋值部分用专用的关键字来表示
+匹配关键字包括：ACTION/KERNEL/BUS/SUBSYSTEM/ATTR等
+赋值关键字包括：NAME/SYMLINK/OWNER/GROUP/IMPORT/MODE等
+例如
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="?*", ATTR{address}=="08:00:27:35:be:ff", ATTR{dev_id}=="0x0", ATTR{type}=="1", KERNEL=="eth*", NAME="ETH1"
+ - 规则意思：当系统中出现新的硬件属于net子系统范畴，系统柜该硬件采取的动作是“add”这个硬件，且这个硬件的address属性信息等于“08:00:27:35:be:ff”，dev_id属性等于“0x0”,"type"属性是1等，这个硬件在udev层次实行的动作是创建/dev/eth1.
+udev 规则可以使用通配符，如*，？，[a-z]等，此外，%k就是KERNEL，%n就是KERNEL的序号(如存储设备的分区号)
+Android采用的和udev类似的void机制
+
+《Linux4.0设备驱动开发详解》笔记--第六章：Linux字符设备驱动
+
+6.1 linux字符设备驱动结构
+6.1.1 cdev结构体
+
+cdev结构体描述一个字符设备
+struct cdev { 
+        struct kobject kobj; //内嵌的kobject对象
+        struct module *owner;   //所属模块 
+        const struct file_operations *ops;//文件操作结构
+        struct list_head list; 
+        dev_t dev;          //设备号，int 类型
+        unsigned int count; 
+}; 
+cdev的dev_t成员定义了设备号，高12位为主设备号，低20位为次设备号 
+获取主、次设备号: 
+MAJOR(dev_t dev)
+MINOR(dev_t dev)
+主次设备号生成dev_t：MKDEV(int major,int minor)
+cdev结构体相关的操作函数
+void cdev_init(struct cdev *, const struct file_operations *);//建立cdev和file_operation之间的连接
+struct cdev *cdev_alloc(void); //动态申请一个cdev内存 
+void cdev_put(struct cdev *p);   //释放 
+int cdev_add(struct cdev *, dev_t, unsigned);  //注册设备
+void cdev_del(struct cdev *);//注销设备
+6.1.2 分配和释放设备号
+
+在注册设备之前应该先申请设备号 
+register_chrdev_region()用于已知设备号
+register_chrdev_region()用于动态申请
+int register_chrdev_region(dev_t from,unsigned count,const char *name)
+
+int alloc_chrdev_region(dev_t *dev,unsigned baseminor,unsigned count,const char *name)
+释放设备号
+void unregister_chrdev_region(dev_t from,unsigned count)
+注册与注销字符设备顺序关系如下：
+register_chrdev_region()－－>cdev_add()     //此过程在加载模块中 
+cdev_del()-->unregister_chrdev_region()     //此过程在卸载模块中
+6.1.3 字符设备驱动组成
+
+字符设备的模块加载与卸载函数
+字符设备驱动的file_operation结构体中的成员函数，大多数实现以下函数 
+read()
+write()
+ioctl()
+copy_from_user()：用户空间缓冲区到内核空间
+copy_to_user()：内核空间到用户空间缓冲区 
+返回0：成功
+返回正数：不能被复制的字节数
+负数：操作失败
+复制的内容是简单的类型，如int、char、long等，则可以用以下函数 
+put_user、get_user
+上述函数中_user是一个宏，表示其后的指针指向用户空间
+内核空间访问用户空间缓存时需要合法性检查 
+access_ok(type, add, size)：确认缓存区确实属于用户空间
+ioctl函数 
+设备类型字段为一个幻数，可以使0-0xff的值，内核中的ioctl-number.txt有推荐的已经存在的幻数，新设备区应该避免与其冲突
+方向字段表示数据传输的方向 
+_IOC_NONE：无数据传输
+_IOC_READ：读
+_IOC_WRITE：写
+_IOC_READ|_IOC_WRITE：双向
+设备类型	序列号	方向	数据尺寸
+8位	8位	2位	13/14位
+预定义命令：内核中预定了一些I/O控制命令，如果某设备中抱哈没了与预定义命令一样的命令码，则这些命令会作为预定义命令被内核处理而不是被设备驱动处理
+
+FIOCLEX：通知内核当exec()系统调用发生时，自动关闭打开的文件
+FIONCLEX：与FIOCLEX相反，清除由FIOCLEX命令设置的标志
+FIOQSIZE：获得一个文件和目录的大小，当用于设备文件时返回一个ENOTTY错误
+FIONBIO：修改在filp->f_flags中的O_NONBLOCK标志
+
+《Linux4.0设备驱动开发详解》笔记--第七章：Linux设备中的并发控制
+
+7.1 并发与竞态
+并发是指多个执行单元同时、并发的被执行，而并发的执行单元对共享资源（硬件资源、软件上的的全局变量、静态变量等）的访问则很容易导致竟态
+竟态发生在以下几种情况 
+对称多处理器（SMP）的多个CPU
+单CPU内进程与抢占它的进程
+中断与进程
+解决方法是保证对共享资源的互斥访问 
+访问共享资源的代码区域称为临界区，临界区需要以某种互斥机制保护 
+互斥途径：中断屏蔽、原子操作、信号量、自旋锁、互斥体等
+7.2 编译乱序和执行乱序
+编译乱序是编译器的问题，而执行乱序是处理器运行时的行为
+编译屏障：在代码中设置barrier()屏障来阻挡编译器优化
+内存屏障指令：解决多核间一个核的内存行为对另一个核可见的问题 
+arm处理器的内存屏障指令有 
+DMB：数据内存屏障
+DSB：数据同步屏障
+LSB：指令同步屏障
+linux的自旋锁、互斥量的等互斥逻辑需要用到上述指令
+7.3 中断屏蔽
+中断屏蔽的使用方法 
+local_irp_disable()与local_irp_enable()只能禁止或是能本CPU内的中断
+local_irp_save(flags)与local_irp_restore(flags)：处理屏蔽或使能中断还能保存目前CPU的中断信息，对arm就是保存和恢复cpsr
+local_bh_disable()和loacal_bh_diable()：禁止和使能中断的底半部
+local_irp_disable();
+...
+critical section /*临界区*/
+...
+local_irp_enable();
+7.4 原子操作
+原子操作可以保证对一个整型数据的修改是排他性的
+原子操作函数分为对整型和位的原子操作
+7.4.1 对整型的原子操作
+
+设置原子变量的值
+//设置原子变量的值为i
+void atomic_set(atomic_t *v, int i);
+//定义原子变量v并初始化为0
+atomic_t v = ATOMIC_INIT(0);
+获取原子变量的值
+//返回原子变量的值
+atomic_read(atomic_t *v);
+原子变量加、减
+//原子变量增加1
+void atomic_sub(int i, atomic_t *v);
+原子变量自增、自减
+//原子变量增加1
+void atomic_inc(atomic_t *v);
+//原子变量减少1
+void atomic_dec(atomic_t *v);
+操作并测试，下属操作对原子变量执行自增、自检和减操作后（没有加操作）。测试其是否为0，位0返回true，否则返回false
+int atomic_inc_and_test(atomic_t *v);
+int atomic_dec_and_test(atomic_t *v);
+int atomic_sub_and_test(int i, atomic_t *v);
+操作并返回，丅述操作是对原子变量的加、减和自增、自减操作，并返回新的值
+int atomic_add_return(int i, atomic_t *v);
+int atomic_sub_return(int i, atomic_t *v);
+int atomic_intc_return(atomic_t *v);
+int atomic_dec_return(atomic_t *v);
+7.4.2 位原子操作
+
+设置位，丅述设置addr地址的底nr位
+void set_bit(nr,void *addr);
+清除位
+void change_bit(nr, void *addr);
+改变位，下述代码对addr的nr位进行反置
+void change_bit(nr, void *addr);
+测试位，返回addr的第nr位
+test_bit(nr, void *addr)
+测试并操作位
+int test_and_se_bit(nr, void *addr);
+int test_and_clear_bit(nr, void *addr);
+int test_and_change_bit(nr, void *addr);
+例如：使用原子变量使得文字只能被一个进程打开
+static atomic_t xxx_available = ATOMIC_INIT(1);
+
+static int xxx_open(struct inode *inode, struct file *filp)
+{
+    ...
+    if(!atomic_dev_and_test(&xxx_available)){
+        atomic_inc(&xxx_available);
+        return -EBUSY;//已打开
+    }
+    ...
+    return 0;//成功
+}
+
+static int xxx_release(struct inode* inode, struct file *filp){
+        atomic_inc(&xxx_available);//释放设备
+        return 0;
+    }
+7.5 自旋锁
+7.5.1 自旋锁的使用
+
+自旋锁是一种典型的对临界资源进行互斥访问的手段，其名称来源于他的工作方式
+为了获取自旋锁，在某CPU上的运行需要先执行一个原子操作，该操作测试并设置某个内存变量。 
+如果测试结果表明锁已经空闲，则程序成功获取自旋锁并继续执行
+如果测试结果表明锁仍在被使用，则程序将在一个小的循环内重复这个“测试并设置”操作，即所谓的自旋
+linux系统中对自旋锁的相关操作 
+定义自旋锁：spinlock_t lock;
+初始化自旋锁：spin_lock_init(lock);
+获得自旋锁：spin_lock(lock);或者spin_locktry(lock);
+释放自旋锁：spin_unlock(lock);
+自旋锁主要针对SMP或者单CPU单内核可抢占的情况
+对于单CPU但是内核不支持抢占的情况，自旋锁自动转化为空操作 
+单CPU系统和可抢占的系统中，自旋锁持有期间中内核的抢占将被禁止
+多核SMP的情况下，任何一个核拿到了自旋锁，该核上的抢占调度也暂时禁止，但是没有禁止另外一个核的抢占调度
+自旋锁的临界区可以被中断或者底半部影响，因而需要自旋锁和其他操作的配合 
+spin_lock_irp() = spin_lock() + local_irq_disable()
+spin_unlock_irp = spin_unlock() +local_irq_enable();
+spin_lock_irqsave() = spin_lock() + local_irq_save();
+spin_unlock_irqrestore() = spin_unlock() + local_irq_restore()
+spin_lock_bh() = spin_lock() + local_bh_disable()
+spin_unlock_bh() = spin_unlock() + local_bh_enable()
+使用自旋锁应该谨慎，同时需要注意几个问题 
+自旋锁是忙等待，在自旋的时候CPU不做其他的操作，因此只有在占用锁很短的情况下才使用自旋锁
+可能因为递归的使用而使系统死锁
+在自旋期间，不能调用调用可能引起进程调度的函数，可能导致内核崩溃
+在单核情况下，也该认为自己的CPU是多核的，以突出驱动的跨平台性
+7.5.2 读写自旋锁
+
+自旋锁不关心临界区在进行什么操作，一视同仁
+自旋锁的衍生锁读写自旋锁允许读的并发，它保留了自选的概念，在写方面只能有一个进程，读方面可以有多个执行单元，但是读和写不能同时进行
+定义并初始化读写自旋锁:
+rwlock_t my_rwlock1 = RW_LOCK_UNLOCKED; //静态初始化
+rwlock_t my_rwlock2;
+rwlock_init(&my_rwlock2); //动态初始化
+读锁定:
+void read_lock(rwlock_t* lock);
+void read_lock_irqsave(rwlock_t* lock, unsigned long flags);
+void read_lock_irq(rwlock_t* lock);
+void read_lock_bh(rwlock_t* lock);
+读解锁:
+void read_unlock(rwlock_t* lock);
+void read_unlock_irqrestore(rwlock_t* lock, unsigned long flags);
+void read_unlock_irq(rwlock_t* lock);
+void read_unlock_bh(rwlock_t* lock);
+在对共享资源进行读取之前,应该先调用读锁定函数锁定共享资源,完成之后再调用读解锁函数释放共享资源;
+
+写锁定:
+void write_lock(rwlock_t* lock);
+void write_lock_irqsave(rwlock_t* lock, unsigned long flags);
+void write_lock_irq(rwlock_t* lock);
+void write_lock_bh(rwlock_t* lock);
+void write_trylock(rwlock_t* lock);
+写解锁:
+void write_unlock(rwlock_t* lock);
+void write_unlock_irqrestore(rwlock_t* lock);
+void write_unlock_irq(rwlock_t* lock);
+void write_unlock_bh(rwlock_t* lock);
+ - 在对共享资源进行写操作之前,应该先调用写锁定函数锁定共享资源,完成之后再调用写解锁函数释放共享资源;与spin_trylock()一样,write_trylock()也只是尝试获得写自旋锁,不管是否成功,都会立即返回;
+读写自旋锁使用套路:
+rwlock_t lock;      //定义读写自旋锁
+rwlock_init(&lock); //初始化读写自旋锁
+
+read_lock(&lock);   //读时加锁
+......
+//临界区操作
+......
+read_unlock(&lock); //读后解锁;
+
+write_lock_irqsave(&lock, flags);    //写时加锁
+......
+//临界区操作
+......
+write_lock_irqrestore(&lock, flags); //写后解锁;
+7.5.3 顺序锁
+顺序锁相关操作：
+void write_seqlock(seqlock_t *s1);
+void write_sequnlock(seqlock_t *s1);
+
+//宏调用，相当于：write_seqlock()+local_irq_save()
+write_seqlock_irqsave(lock,flags)
+write_sequnlock_irqrestore(lock,flags)
+
+//宏调用，相当于：write_seqlock()+local_irq+disable()
+write_seqlock_irq(lock)
+write_sequnlock_irq(lock)
+
+//宏调用，相当于：write_seqlock()+local_bh_disable()
+write_seqlock_bh(lock)
+write_sequnlock_bh(lock)
+
+int write_tryseqlock(seqlock_t *s1)，此函数和上面提到的类似。
+写执行单元使用如下一种模式的顺序锁：
+write_seqlock(&seqlock);
+.........//写操作代码块
+write_sequnlock(&seqlock);
+读执行单元涉及如下顺序锁操作：
+读开始：unsigned read_seqbegin(const seqlock_t *s1);
+//读执行单元在访问共享资源时要，调用该函数，返回锁s1的顺序号
+read_seqbegin_irqsave(lock,flags)  
+//等同于：local_irq_save()+read_seqbegin()
+重读：int read_seqretry(const seqlock_t *s1,unsigned iv) 
+//在读结束后调用此函数来检查，是否有写执行单元对资源进行操作，若有，则重新读。iv 为锁的顺序号。
+7.5.4 读-复制-更新（RCU）
+
+RCU的读端没有锁、内存屏蔽、原子指令类的开销，机会可以认为是直接读
+RCU的写端访问它的共享资源前首先要复制一个副本，然后对副本进行修改，然后使用一个回调机制在适当的时机把指向原来数据的指针重新指向新的修改数据 
+这个时机就是所有引用该数据的CPU都退出对共享数据读操作的时候
+等待适当时机的这一时期称为宽限期
+RCU的有点 
+允许多个读执行单元同时访问保护区
+允许多个读写执行单元同时访问保护区数据
+RCU不能替代读写锁 
+因为RCU的写执行单元的同步开销较大，当写较多的时候，对读执行单元的性能提高不能弥补写执行单元同步导致的损失
+参考: 
+RCU机制
+TREE RCU实现之一 —— 数据结构
+TREE RCU实现之二 —— 主干函数
+TREE RCU实现之三 —— 定期调用 
+http://blog.csdn.net/junguo/article/details/8244530/ 
+http://blog.csdn.net/junguo/article/details/8258231 
+http://blog.csdn.net/junguo/article/details/8258261 
+http://blog.csdn.net/junguo/article/details/8268277
+7.6 信号量
+定义信号量
+struct semaphore sem;
+初始化：
+void sema_init (struct semaphore *sem, int val);
+void init_MUTEX (struct semaphore *sem); //将sem的值置为1，表示资源空闲
+void init_MUTEX_LOCKED (struct semaphore *sem); //将sem的值置为0，表示资源忙
+申请内核信号量所保护的资源：
+//可引起睡眠
+void down(struct semaphore * sem); 
+//down_interruptible能被信号打断
+int down_interruptible(struct semaphore * sem);  
+// 非阻塞函数，不会睡眠。无法锁定资源则马上返回
+int down_trylock(struct semaphore * sem); 
+释放内核信号量所保护的资源：
+void up(struct semaphore * sem);
+7.7 互斥体
+互斥体提供了两种机制：经典互斥体和实时互斥体
+经典互斥体结构体： （会导致无限制优先级反转问题）
+struct mutex {
+    /* 1: unlocked, 0: locked, negative: locked, possible waiters */
+    atomic_t  count;
+    spinlock_t
+    wait_lock;
+    struct list_head
+    wait_list;
+    #if defined(CONFIG_DEBUG_MUTEXES) || defined(CONFIG_SMP)
+    struct task_struct
+    *owner;
+    #endif
+    #ifdef CONFIG_DEBUG_MUTEXES
+    const char 
+    *name;
+    void  *magic;
+    #endif
+    #ifdef CONFIG_DEBUG_LOCK_ALLOC
+    struct lockdep_map
+    dep_map;
+    #endif
+};
+实时互斥体结构体：
+struct rt_mutex {
+    raw_spinlock_t
+    wait_lock;
+    struct plist_head
+    wait_list;
+    struct task_struct
+    *owner;
+    #ifdef CONFIG_DEBUG_RT_MUTEXES
+    int  save_state;
+    const char 
+    *name, *file;
+    int  line;
+    void  *magic;
+    #endif
+};
+操作：
+struct mutex my_mutex;    
+mutex_init(&my_mutex);   
+void mutex_lock(struct mutex* lock);                       //获取互斥体,不可被信号中断
+void mutex_lock_interruptible(struct mutex* lock);     //获取互斥体,可被信号打断
+int mutex_trylock(struct mutex* lock);                     //尝试获取互斥体
+void mutex_unlock(struct mutex* lock);                     //释放互斥体
+
+int mutex_is_locked(struct mutex* lock):
+//该函数检查互斥锁lock是否处于锁定状态。返回1,表示已锁定;返回0,表示未锁定;
+int mutex_lock_interruptible(struct mutex* lock);  //该函数可被信号打断
+int mutex_lock_killable(struct mutex* lock);       //该函数可被kill信号打断
+用例：
+struct mutex my_mutex;   
+mutex_init(&my_mutex);   
+
+mutex_lock(&my_mutex);  
+...临界区...                 
+mutex_unlock(&my_mutex); 
+7.8 完成量
+完成量：表示一个执行单元需要等待另一个执行单元完成某事后方可执行。 
+它是一种轻量级机制，为了完成进程间的同步而设计
+使用完成量等待时，调用进程是以独占睡眠方式进行等待的
+不是忙等待
+结构体 
+done变量是完成量要保护的对象
+wait则是申请完成量的进程等待队列
+struct completion {
+    unsigned int done;
+    wait_queue_head_t wait;
+};
+初始化函数 
+done变量被初始化为0.
+内核代码中wait_for_common函数其实就是对done变量作判断，若done变量没有大于0，则它一直处于while循环中。
+complete函数就是对done变量加1。wait_for_common函数便会退出while循环，同时将done减1，表示申请完成量成功。
+static inline void init_completion(struct completion *x)
+{
+x->done = 0;
+init_waitqueue_head(&x->wait);
+}
+操作：
+struct completion my_completion;    //定义完成量my_completion
+
+init_completion(&my_completion);    //初始化完成量my_completion
+
+void wait_for_completion(struct completion* comp)
+//该函数等待一个完成量被唤醒。该函数会阻塞调用进程,如果所等待的完成量没有被唤醒,那就一直阻塞下去,而且不会被信号打断;
+
+int wait_for_completion_interruptible(struct completion* comp)
+//该函数等待一个完成量被唤醒。但是它可以被外部信号打断;
+
+int wait_for_completion_killable(struct completion* comp)
+//该函数等待一个完成量被唤醒。但是它可以被kill信号打断;
+
+unsigned long wait_for_completion_timeout(struct completion* comp, unsigned long timeout)
+//该函数等待一个完成量被唤醒。该函数会阻塞调用进程,如果所等待的完成量没有被唤醒,调用进程也不会一直阻塞下去,而是等待一个指定的超时时间timeout,当超时时间到达时,如果所等待的完成量仍然没有被唤醒,那就返回;超时时间timeout以系统的时钟滴答次数jiffies计算
+
+bool try_wait_for_completion(struct completion* comp)
+//该函数尝试等待一个完成量被唤醒。不管所等待的完成量是否被唤醒,该函数都会立即返回
+
+bool completion_done(struct completion* comp)
+//该函数用于检查是否有执行单元阻塞在完成量comp上(是否已经完成),返回0,表示有执行单元被完成量comp阻塞;相当于wait_for_completion_timeout()中的timeout=0
+
+void complete(struct completion* comp)
+//该函数只唤醒一个正在等待完成量comp的执行单元
+
+void complete_all(struct completion* comp)
+//该函数唤醒所有正在等待同一个完成量comp的执行单元
+
+NORET_TYPE void complete_and_exit(struct completion* comp, long code)
+//该函数唤醒一个正在等待完成量comp的执行单元,并退出,code为退出码
+注意:在内核处理完请求之后,必须调用这三个函数中的一个,来唤醒其它正在等待的进程
+
+《Linux4.0设备驱动开发详解》笔记--第八章：linux设备驱动的阻塞与非阻塞
+
+8.1 阻塞与非阻塞I/O
+阻塞操作 ： 是指在执行设备操作时，若不能获得资源，则挂起进程直到满足操作条件后再进行操作。
+
+被挂起的进程进入休眠， 被从调度器移走，直到条件满足。
+非阻塞操作：在不能进行设备操作时，并不挂起，它或者放弃，或者不停地查询，直到可以进行操作。
+
+非阻塞应用程序通常使用select系统调用查询是否可以对设备进行无阻塞的访问最终会引发设备驱动中poll函数执行。
+阻塞与非阻塞例程：
+//阻塞例程
+char buf;
+fd = open("/dev/ttyS1",O_RDWR);
+.....
+res = read(fd,&buf,1); //当串口上有输入时才返回,没有输入则进程挂起睡眠
+if(res == 1)
+{
+    printf("%c/n",buf);
+}
+//非阻塞例程
+char buf;
+fd = open("/dev/ttyS1",O_RDWR|O_NONBLOCK);//O_NONBLOCK 非阻塞标识
+.....
+while(read(fd,&buf,1)!=1);//串口上没有输入则返回，所以循环读取
+printf("%c/n",buf);
+8.1.1 等待队列
+
+定义“等待队列头”
+wait_queue_head_t my_queue;
+初始化“等待队列头”
+init_wait_queue_head(&my_queue);
+定义并初始化等待队列头的快捷方式(宏)
+DECLARE_WAIT_QUEUE_HEAD(name)
+定义等待队列 
+DECLARE_WAITQUEUE()：该宏用于定义并初始化一个名为name的等待队列
+**DECLARE_WAITQUEUE(name, tsk)** 
+添加/移除等待队列 
+add_wait_queue()：将等待队列wait添加到等待队列头q指向的等待队列链表中
+remove_wait_queue()：将等待队列wait从附属的等待队列头q指向的等待队列链表中移除
+void fastcall add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait); 
+
+void fastcall remove_wait_queue(wait_queue_head_t *q, wait_queue_t *wait); 
+等待事件 
+wait_event(queue, condition)：queue作为等待队列头的等待队列被唤醒，而且condition必须满足，否则阻塞。不能被信号打断
+wait_event_interruptible()：可以被信号打断
+wait_event_timeout()：加上_timeout后意味着阻塞等待的超时时间，以jiffy为单位。在timeout到达时不论condition是否满足，均返回
+wait_event(queue, condition);
+wait_event_interruptible(queue, condition) ;
+wait_event_timeout(queue, condition) ;
+wait_event_interruptible_timeout(queue, condition)
+唤醒队列 
+唤醒以queue作为等待队列头的所有等待队列中所有属于该等待队列头的等待队列对应的进程
+wake_up()应与wait_event()或wait_event_timeout()成对使用
+wake_up()可唤醒处于TASK_INTERRUPTIBLE和TASK_UNINTERRUPTIBLE的进程
+wake_up_intterruptible()则应与wait_event_interruptible()或wait_envent_interruptible_timeout()成对使用
+wake_up_interruptible()只能唤醒处于TASK_INTERRUPTIBLE的进程
+void wake_up(wait_queue_head_t *queue);
+void wake_up_interruptible(wait_queue_head_t *queue);
+在等待队列上睡眠 
+sleep_on()：将目前进程的状态设置成TASK_UNINTERRUPTIBLE，并定义一个等待队列，之后把它附属到等待队列头q，直到资源可获得，q引导的等待队列被唤醒。
+interruptible_seep_on()：将目前进程的状态设置成TASK_INTERRUPTIBLE，并定义一个等待队列，之后把它附属到等待队列头q，直到资源可获得，q引导的等待队列被唤醒或者进程收到信号。
+sleep_on(wait_queue_head_t *q); 
+interruptible_seep_on(wait_queue_head_t *q); 
+例程：设备驱动中使用等待队列
+static ssize_t xxx_write(struct file *file, const char *buffer, size_t count, loff_t *ppos)
+{
+    ...
+    DECLARE_WAITQUEUE(wait, current);
+    add_wait_queue(&xxx_wait, &wait);
+    /*等待设备缓冲区可写*/
+    do {
+        avail = device_writable(...);
+        if(avail < 0) {
+            if(file->f_flags & O_NONBLOCK) {
+                ret = -EAGAIN;
+                goto out;
+            }
+            __set_current_state)(TASK_INTERRUPTIBLE);
+            schedule();
+            if(signal_pending(current)){
+                ret = -ERESTARTSYS;
+                goto out;
+            }
+        } 
+    } while(avail < 0);
+    /*写设备缓存区*/
+    device_write(...)
+    out:
+    remove_wait_queue(&xxx_wait, &wait);
+    set_current_state(TASK_RUNNING);
+    return ret;
+}
+8.2 轮询操作
+8.2.1 轮询的概念与作用
+
+非阻塞I/O的应用程序通常使用select()和poll()系统调用查询是否可对设备进行无阻塞的访问。
+select()和poll()系统调最终会引发设备中的poll()函数执行(xxx_poll()).
+8.2.2 应用程序中的轮询编程
+
+select()系统调用： 
+readfds、writefds、exceptfds分别是被select()监视的读、写和异常处理的文件描述符集合
+numfds的值是需要检查的号码最高的文件描述符加1
+timeout参数是一个指向struct timeval类型的指针，它可以使select()在等待timeout时间后若没有文件描述符准备好则返回
+int select(int numfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+timeout参数是一个指向struct timeval类型的指针，它可以使select()在等待timeout时间后若仍然没有文件描述符准备好则超时返回
+struct timeval
+{
+int tv_sec; // 秒
+int tv_usec; // 微秒
+}
+设置、清除、判断文件描述符集合：
+FD_ZERO(fd_set *set) // 清除一个文件描述符集
+FD_SET(int fd, fd_set *set) // 将一个文件描述符加入文件描述符集中
+FD_CLR(int fd, fd_set *set) // 将一个文件描述符从文件描述符集中清除
+FD_ISSET(int fd, fd_set *set) // 判断文件描述符是否被置位
+例程：驱动函数中的poll()函数典型模板
+#inlcude------
+main()
+{
+    int fd,num;
+    char rd_ch[BUFFER_LEN];
+    fd_set rfds,wfds; //读写文件描述符集
+    //以非阻塞方式打开/dev/globalfifo设备文件
+    fd=open("/dev/globalfifo",O_RDWR|O_NONBLOCK);
+    if(fd != -1)
+    {
+        //FIFO 清零
+        if(ioctl(fd,FIFO_CLEAR,0) < 0)
+        {
+            printf("ioctl cmd failed /n");
+        }
+        while(1)
+        {
+            FD_ZERO(&rfds);
+            FD_ZERO(&wfds);
+            FD_SET(fd,&rfds);
+            FD_SET(fd,&wfds);
+            select(fd+1,&rfds,&wfds,null,null);
+        }
+    }
+}
+8.2.3 设备驱动中的轮询编程
+
+poll()函数： 
+参数 
+file：file结构指针
+poll_table：轮训表指针
+作用 
+对可能引起设备文件状态变化的等待队列调用poll_wait()函数，将对应的等待队列头添加到poll_table
+返回表示是否能对设备进行无阻塞读、写访问的掩码
+返回 
+poll()函数应该返回设备资源的可获取状态，即POLLIN、POLLOUT、POLLPRI、POLLERR、POLLNVAL等宏的位“或”结果。
+unsigned int (*poll)(struct file *flip, struct poll_table *wait);
+poll_wait()函数 
+用于向poll_table注册等待队列，该函数不会引起阻塞
+工作是把当前进程添加到wait参数指定的等待列表(poll_table)中
+void poll_wait(struct file *flip, wait_queue_head_t *queue, poll_table *wait);
+用户空间调用select()和poll()接口，设备驱动提供poll()函数 
+设备驱动的poll()本身不会阻塞
+poll()和select()系统调用则会阻塞地等待文件描述符集合中的至少一个可访问或超时。
+poll()模板：
+static unsigned int xxx_poll(struct file *filp, poll_table *wait)
+{
+    unsigned int mask = 0;
+    struct xxx_dev *dev = filp->private_data; // 获得设备结构指针
+    ...
+    poll_wait(filp, &dev->r_wait, wait); // 加读等待队列头
+    poll_wait(filp, &dev->w_wait, wait); // 加写等待队列头
+    if(...) // 可读
+    {
+        mask |= POLLIN | POLLRDNORM; // 标示数据可获得
+    }
+    if(...) // 可写
+    {
+        mask |= POLLOUT | POLLWRNORM; // 标示数据可写入
+    }
+    ...
+    return mask;
+}
+支持轮询操作的globalfifo驱动
+static unsigned int gloablfif0_poll(struct file *filp,poll_table *wait)
+{
+    unsigned int mask = 0;
+    struct globalfifo_dev *dev = filp->private_data;
+
+    down(&dev->sem);
+
+    poll_wait(filp,&dev->r_wait , wait) ;
+    poll_wait(filp,&dev->r_wait , wait) ;
+
+    if(dev->current_len != 0)
+    {
+        mask |= POLLIN | POLLRDNORM; 
+    }
+
+    if(dev->current_len != GLOBALFIFO_SIZE)
+    {
+        mask |= POLLOUT | POLLWRNORM;
+    }
+
+    up(&dev->sem);
+    return mask;
+}
+
+《Linux4.0设备驱动开发详解》笔记--第九章：Linux设备驱动中的异步通知与同步I/O
+
+在设备驱动中使用异步通知可以使得对设备的访问可进行时，由驱动主动通知应用程序进行访问。因此，使用无阻塞I/O的应用程序无需轮询设备是否可访问，而阻塞访问也可以被类似“中断”的异步通知所取代。异步通知类似于硬件上的“中断”概念，比较准确的称谓是“信号驱动的异步I/O”。
+
+9.1 异步通知的概念和作用
+异步通知：一旦设备就绪，则主动通知应用程序，该应用程序无需查询设备状态
+几种通知方式比较： 
+阻塞I/O ：一直等待设备可访问后开始访问
+非阻塞I/O：使用poll()查询设备是否访问
+异步通知 ：设备主动通知用户应用程序
+-
+9.2 linux异步通知编程
+
+9.2.1 linux信号
+
+作用：linux系统中，异步通知使用信号来实现
+SIGHUP     终止进程     终端线路挂断
+SIGINT     终止进程     中断进程
+SIGQUIT   建立CORE文件终止进程，并且生成core文件
+SIGILL   建立CORE文件       非法指令
+SIGTRAP   建立CORE文件       跟踪自陷
+SIGBUS   建立CORE文件       总线错误
+SIGSEGV   建立CORE文件       段非法错误
+SIGFPE   建立CORE文件       浮点异常
+SIGIOT   建立CORE文件       执行I/O自陷
+SIGKILL   终止进程     杀死进程
+SIGPIPE   终止进程     向一个没有读进程的管道写数据
+SIGALARM   终止进程     计时器到时
+SIGTERM   终止进程     软件终止信号
+SIGSTOP   停止进程     非终端来的停止信号
+SIGTSTP   停止进程     终端来的停止信号
+SIGCONT   忽略信号     继续执行一个停止的进程
+SIGURG   忽略信号     I/O紧急信号
+SIGIO     忽略信号     描述符上可以进行I/O
+SIGCHLD   忽略信号     当子进程停止或退出时通知父进程
+SIGTTOU   停止进程     后台进程写终端
+SIGTTIN   停止进程     后台进程读终端
+SIGXGPU   终止进程     CPU时限超时
+SIGXFSZ   终止进程     文件长度过长
+SIGWINCH   忽略信号     窗口大小发生变化
+SIGPROF   终止进程     统计分布图用计时器到时
+SIGUSR1   终止进程     用户定义信号1
+SIGUSR2   终止进程     用户定义信号2
+SIGVTALRM 终止进程     虚拟计时器到时
+9.2.2 信号的接收
+
+信号捕获函数signal() 
+参数： 
+signum：信号值
+handler：针对signum的处理函数 
+若为SIG_IGN：忽略该信号
+若为SIG_DFL：系统默认方式处理
+若为用户自定义函数：信号被捕获，该函数被执行
+返回值 
+成功：最后一次为信号signum绑定的处理函数的handler值
+失败：返回SIG_ERR
+sigaction() 
+作用：改变进程接收到特定信号后的行为
+参数 
+signum：信号值 
+除SIG_KILL及SIG_STOP以外的一个特定有效的信号
+act：指向结构体sigaction的一个实例的指针 
+在结构体sigaction中，指定了处理信号的函数，若为空则进程会以缺省值的方式处理信号
+oldact：保存原来对应的信号的处理函数，可设为NULL
+int sigaction(int signo,const struct sigaction *restrict act, struct sigaction *restrict oact);
+实例：使用信号实现异步通知 
+在用户空间处理设备释放信号的准备工作 
+通过F_SETOWN IO控制命令设置设备文件的拥有者为本进程，以使信号被本进程捕获
+通过F_SETFL IO控制命令设置设备文件以支持FASYNC，及异步通知模式
+通过signal()函数连接信号和信号处理函数
+//启动信号机制
+
+void sigterm_handler(int sigo)
+{
+
+char data[MAX_LEN];
+int len;
+len = read(STDIN_FILENO,&data,MAX_LEN);
+data[len] = 0;
+printf("Input available:%s\n",data);
+exit(0);
+
+}
+
+int main(void)
+{
+
+int oflags;
+//启动信号驱动机制
+
+signal(SIGIO,sigterm_handler);
+fcntl(STDIN_FILENO,F_SETOWN,getpid());
+oflags = fcntl(STDIN_FILENO,F_GETFL);
+fctcl(STDIN_FILENO,F_SETFL,oflags | FASYNC);
+//建立一个死循环，防止程序结束
+
+whlie(1);
+
+return 0;
+
+}
+9.2.3 信号的释放 (在设备驱动端释放信号)
+
+为了是设备支持异步通知机制，驱动程序中涉及以下3项工作 
+支持F_SETOWN命令，能在这个控制命令处理中设置filp->f_owner为对应的进程ID。不过此项工作已由内核完成，设备驱动无须处理
+支持F_SETFL命令处理，每当FASYNC标志改变时，驱动函数中的fasync()函数得以执行。因此，驱动中应该实现fasync()函数
+在设备资源中可获得，调用kill_fasync（）函数激发相应的信号
+-
+设备驱动中异步通知编程： 
+处理FASYNC标志变更函数：fasync_helper()
+释放信号的函数：kill_fasync()
+int fasync_helper(int fd,struct file *filp,int mode,struct fasync_struct **fa);
+
+ void kill_fasync(struct fasync_struct **fa,int sig,int band);
+将fasync_struct结构体指针放到设备结构体中是最佳的选择
+//异步通知的设备结构体模板
+struct xxx_dev{
+    struct cdev cdev;
+    ...
+    struct fasync_struct *async_queue;//异步结构体指针
+};
+在设备驱动中的fasync()函数中，只需简单地将该函数的3个参数以及fasync_struct结构体指针的指针作为第四个参数传入fasync_helper()函数就可以了，模板如下
+static int xxx_fasync(int fd,struct file *filp, int mode)
+{
+　　struct xxx_dev *dev = filp->private_data;
+　　return fasync_helper(fd, filp, mode, &dev->async_queue);
+}
+在设备资源可获得时应该调用kill_fasync()函数释放SIGIO信号，可读时第三个参数为POLL_IN，可写时第三个参数为POLL_OUT，模板如下
+static ssize_t xxx_write(struct file *filp,const char __user *buf,size_t count,loff_t *ppos)
+
+{
+    struct xxx_dev *dev = filp->private_data;
+    ...
+    //产生异步读信息
+    if(dev->async_queue)
+    kill_fasync(&dev->async_queue,GIGIO,POLL_IN);
+    ...
+}
+最后在文件关闭时，要将文件从异步通知列表中删除
+int xxx_release(struct inode *inode,struct file *filp)
+
+{
+    //将文件从异步通知列表中删除
+    xxx_fasync(-1,filp,0);
+    ...
+    return 0;
+}
+9.4 linux异步I/O
+9.4.1 AIO概念与GNU C库 AIO
+
+9.4.1.1 AIO概念
+
+同步I/O：linux系统中最常用的输入输出（I/O）模型是同步I/O，在这个模型中，当请求发出后，应用程序就会阻塞，知道请求满足
+
+异步I/O：I/O请求可能需要与其它进程产生交叠
+
+Linux 系统中最常用的输入/输出（I/O）模型是同步 I/O
+
+在这个模型中，当请求发出之后，应用程序就会阻塞，直到请求满足为止
+调用应用程序在等待 I/O 请求完成时不需要使用任何中央处理单元（CPU）
+在某些情况下，I/O 请求可能需要与其他进程产生交叠，可移植操作系统接口（POSIX）异步 I/O（AIO）应用程序接口（API）就提供了这种功能
+9.4.1.1 AIO系列API：
+
+aio_read–异步读 
+作用：请求对一个有效的文件描述符进行异步读写操作 
+请求进行排队之后会立即返回
+这个文件描述符可以表示一个文件、套接字，甚至管道
+参数aiocb：结构体包含了传输的所有信息，以及为AIO操作准备的用户空间缓存区
+返回值 
+成功：返回0
+失败：返回-1，并设置errno的值
+int aio_read( struct aiocb *aiocbp );
+aio_write–异步写 
+作用：请求一个异步写操作 
+请求进行排队之后会立即返回
+这个文件描述符可以表示一个文件、套接字，甚至管道
+参数aiocb：结构体包含了传输的所有信息，以及为AIO操作准备的用户空间缓存区
+返回值 
+成功：返回0
+失败：返回-1，并设置errno的值
+int aio_write( struct aiocb *aiocbp );
+aio_error 
+作用：确定请求的状态
+参数aiocb：结构体包含了传输的所有信息，以及为AIO操作准备的用户空间缓存区
+返回值 
+EINPROGRESS：说明请求尚未完成
+ECANCELED：说明请求被应用程序取消
+失败：返回-1，并设置errno的值
+int aio_error( struct aiocb *aiocbp );
+aio_return–获得异步操作的返回值 
+异步 I/O 和标准块 I/O 之间的另外一个区别是不能立即访问这个函数的返回状态，因为并没有阻塞在 read()调用上
+在标准的 read()调用中，返回状态是在该函数返回时提供的。但是在异步 I/O 中，我们要使用 aio_return()函数
+只有在 aio_error()调用确定请求已经完成（可能成功，也可能发生了错误）之后，才会调用这个函数
+参数aiocb：结构体包含了传输的所有信息，以及为AIO操作准备的用户空间缓存区
+返回值 
+成功：返回所传输的字节数
+失败：返回-1
+ssize_t aio_return( struct aiocb *aiocbp );
+aio_suspend–挂起异步操作，直到异步请求完成为止 
+作用：挂起（或阻塞）调用进程，直到异步请求完成为止，调用者提供了一个 aiocb 引用列表，其中任何一个完成都会导致 aio_suspend()返回
+int aio_suspend( const struct aiocb *const cblist[], int n, const struct timespec *timeout );
+aio_cancel–取消异步请求 
+作用：允许用户取消对某个文件描述符执行的一个或所有 I/O 请求
+要求： 
+如果要取消一个请求，用户需提供文件描述符和 aiocb 引用 
+函数返回AIO_CANCELED：请求被成功取消
+函数返回AIO_NOTCANCELED：请求完成
+如果要取消对某个给定文件描述符的所有请求，用户需要提供这个文件的描述符以及一个对 aiocbp 的 NULL 引用 
+函数返回AIO_CANCELED：表明所有的请求都取消了
+函数返回AIO_NOTCANCELED：表明至少有一个请求没有被取消
+函数返回AIO_ALLDONE：表明没有一个请求可以被取消
+使用 aio_error()来验证每个 AIO 请求 
+aio_error()返回-1并且设置了errno被设置为ECANCELED：表明某个请求已经被取消了
+int aio_cancel( int fd, struct aiocb *aiocbp );
+lio_listio–同时发起多个传输（一次系统调用可以启动大量的I/O操作） 
+作用：这个函数非常重要，它使得用户可以在一个系统调用（一次内核上下文切换）中启动大量的 I/O 操作
+参数 
+mode：可以是 LIO_WAIT 或 LIO_NOWAIT 
+LIO_WAIT 会阻塞这个调用，直到所有的 I/O 都完成为止
+在操作进行排队之后，LIO_NOWAIT 就会返回
+list ：是一个 aiocb 引用的列表，最大元素的个数是由 nent 定义的 
+如果 list 的元素为 NULL，lio_listio()会将其忽略。
+int lio_listio( int mode, struct aiocb *list[], int nent, struct sigevent *sig );
+9.4.2 Linux内核AIO与libaio
+
+linux AIO也可以由内核空间实现，异步I/O是linux2.6以后版本内核的标准特性
+对于块设备，AIO可以一次性发出大量的read/write调用并且通过通用块层的I/O调度来获得更好的性能，用户也可以减少过多的同步负载
+对网络设备而言，在socket层面上，也可以使用AIO，让CPU和网卡的收发充分交叠以改善吞吐性能
+用户空间中一般要结合libaio来进行内核AIO的系统调用
+io_setup( )
+
+//Initializes an asynchronous context for the current process
+
+io_submit( )
+
+//Submits one or more asynchronous I/O operations
+
+io_getevents( )
+
+//Gets the completion status of some outstanding asynchronous I/O operations
+
+io_cancel( )
+
+//Cancels an outstanding I/O operation
+
+io_destroy( )
+
+//Removes an asynchronous context for the current process
+
+9.4.3 AIO与设备驱动
+
+用户空间调用io_submit()之后，对应于用户传递的每个iocb结构，内核会生成一个与之对应的kiocb结构
+通过is_sync_kiocb判断某kiocb是否为同步I/O请求
+
+如果是返回真，表示为异步I/O请求
+字符设备：必须明确应支持AIO（极少数是异步I/O操作）
+
+字符设备驱动程序中file_operations 包含 3 个与 AIO 相关的成员函数，
+ssize_t (*aio_read) (struct kiocb *iocb, char *buffer, size_t count, loff_t offset);
+
+ssize_t (*aio_write) (struct kiocb *iocb, const char *buffer, size_t count, loff_t offset);
+
+int (*aio_fsync) (struct kiocb *iocb, int datasync);
+块设备和网络设备：本身是异步的
+
