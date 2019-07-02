@@ -1444,3 +1444,3175 @@ ssize_t (*aio_write) (struct kiocb *iocb, const char *buffer, size_t count, loff
 int (*aio_fsync) (struct kiocb *iocb, int datasync);
 块设备和网络设备：本身是异步的
 
+《Linux4.0设备驱动开发详解》笔记--第十章：Linux设备驱动中的中断与时钟
+
+2016年05月20日 13:44:09 zcj仲从建 阅读数 1617
+版权声明：本文为博主原创文章，未经博主允许不得转载。 https://blog.csdn.net/z1106609486/article/details/51461072
+10.1 中断与定时器
+
+分类 
+中断来源 
+内部中断 
+来源于CPU的内部（软件中断的指令、溢出、除法错误等）
+外部中断
+来源于外设请求
+是否可屏蔽 
+可屏蔽中断
+不可屏蔽中断
+中断的入口方式 
+向量中断 
+CPU给每个不同的中断分配不同的中断号，中断发生时会自动跳到该中断号对应的地址执行
+非向量中断 
+多个中断共享一个入口地址，进入该入口后通过软件判断中具体哪个中断
+ARM渡河处理器里最常用的中断控制器是GIC，它支持三种类型的中断 
+SGI：软件产生的中断，可用于多核间通信，一个CPU可以通过写GIC寄存器给另一个CPU产生中断
+PPI：某个CPU私有外设的中断，这类外设中断只能发给一个CPU
+SPI：共享外设中断，这类外设的中断可以路由到任何一个CPU
+ARM Linux默认情况下，中断都是由CPU0上产生的
+10.2 Linux的中断处理程序架构
+
+中断分层 
+顶半部 
+简单地读取寄存器中中断状态，并处理中断标志后就进行“登记中断”的工作 
+“登记中断”：将底半部放在该设备的底半部执行队列中，以加快顶半部的执行速度
+底半部 
+处理中断程序的所有事情，可被中断打断
+中断要处理的任务较少时可以所有的处理任务放到顶部处理
+cat /proc/interrupts 
+获得中断的统计信息，并且能统计出每个中断号发生的次数
+10.3 Linux中断编程
+
+10.3.1 申请和释放中断
+
+1、申请irq
+
+int request_irq(unsigned int irq, irq_handler_t handler, unsigned long flags, const char *name, void *dev);
+1
+request_irq()函数 
+参数 
+irq：申请的硬件中断号
+handler：向系统登记的中断处理函数，是一个回调函数
+irqflags：中断处理属性 
+中断触发方式 
+IRQ_TRIGGER_RISING
+IRQF_TRIGGER_FALLING
+IRQF_TRIGGER_HIGH
+IRQF_TRIGGER_LOW
+中断处理方式 
+IRQF_shared：多个设备共享中断
+dev：传递给中断服务程序的私有数据，一般为设备结构体或者NULL
+返回值 
+成功：返回0
+失败： 
+返回-EINVAL：中断号无效或者中断处理函数为NULL
+返回-EBUSY：中断已经被占用且不能共享
+int devm_irq_irq(struct devcice* dev, unsigned int irq, irq_handler_t handler, unsigned long irqflags, const char *devname, void *dev_id);
+1
+devm_request_irq()函数 
+与request_irq()函数区别：devm_开头的API申请的是内核“managed”的资源，一般不需要在出错的地方处理和在remove()接口里面在显示的释放
+10.3.2 使能和屏蔽中断
+
+屏蔽一个中断源 
+disable_irq_nosync()：立即返回
+disable_irq()：等待目前的中断处理完成 
+因为desable_irq()函数会等待指定的中断被处理完成，因此如果在n号中断的顶半部调用disable_irq(n)，会引起系统的死锁，这种情况下只能调用disable_irq_nosync(n)
+void disable_irq_irq(int irq);
+void disable_irq_nosync(int irq);
+void enable_irq(int irq);
+1
+2
+3
+屏蔽本CPU上的全部中断 
+local_irq_save()函数：会将中断的状态保留在flags中 
+flags为unsigned long类型，被直接传递，而不是通过指针
+local_irq()函数直接禁止中断而不保存状态
+#define local_irq_save(flag) ...
+void local_irq_disable(void);
+1
+2
+恢复本CPU上的全部中断
+#define local_irq-restore(flags) ...
+void local_irq_enable(void);
+1
+2
+10.3.3 底半部机制
+
+Linux实现底半部机制主要有tasklet、工作队列、软中断和线程化irq
+tasklet 
+tasklet执行的上下文是软中断，执行的时机是顶半部返回的时候
+实际的操作是：定义tasklet及其处理函数，并将两者关联 
+DECLARE_TASKLET：实现了定义名称为my_tasklet的tasklet，并将其与my_tasklet_func()这个函数绑定，而传入这个函数的参数为data
+在调度tasklet的时候引用一个tasklet_schedule()函数
+void my_tasklet_func(unsigned long);//定义一个处理函数
+
+//定义一个tasklet结构my_tasklet, 与my_tasklet_func(data)函数相关联
+DECLARE_TASKLET(my_tasklet, my_tasklet_func, data);
+
+tasklet_schedule(&my_tasklet);
+1
+2
+3
+4
+5
+6
+工作队列 
+使用方法和tasklet相似，如下：
+struct work_struct my_wq; //定义一个工作队列
+
+void my_wq_func(unsigned long);  //定义一个处理函数
+
+INIT_WORK(&my_wq, (void (*)(void *))my_wq_func, NULL);  //初始化工作队列并将其与处理函数绑定
+
+schedule_work(&my_irq)；//系统在适当的时候需要调度时使用运行
+1
+2
+3
+4
+5
+6
+7
+软中断 
+使用软件方式模拟硬件中断的概念，实现宏观上的异步执行效果
+软中断和tasklet仍然运行与中断上下文，而工作队列则运行于进程上下文，因此软中断和tasklet的处理函数不能休眠，但工作队列是可以的。
+softirq_action结构体表征一个软中断 
+这个结构体中包含软中断处理函数指针和传递给函数的参数
+open_softirq()可以注册软中断对应的处理函数
+raise_softirq()函数可以触发一个中断
+local_bh_disable()和local_bh_enable()是内核用于禁止和使能软中断和tasklet底半部机制的函数。
+threaded_irq 
+内核申请中断的新函数 
+request_threaded_irq();
+devm_request_threaded_irq(); 
+新的函数比request_irq()函数和devm_request_irq()函数多了个thread_fn参数
+这两个函数申请中断的时候，内核会为相应的中断号分配一个对应的内核线程，这个线程指针对这个中断号
+这两个函数支持在irqflags中设置IRQF_ONESHOT标志，这样内核会自动在中断上下文中屏蔽对应的中断号，而在内核调度thread_fn执行后，重新是能该中断号
+参数 
+handler对应的函数执行于中断上下文
+thread_fn参数对应的函数执行于内核线程
+如果handler结束的时候，返回值是IRQ_WAKE_THREAD，内核会调度线程执行thread_fn对应的函数
+handler参数可以设置为NULL，此时内核会默认的irq_default_primary_handler()代替handler，并会使用IRQF_ONESHOT标志
+int request_threaded_irq(unsigned int irq, irq_handler_t handler, irq_handler_t thread_fn, unsigned long flags, const char*name, void *dev);
+
+int devm_request_threaded_irq(struct device *dev, unsigned int irq, irq_handler_t handler, irq_handler_t thread_fn, unsignd long irqflags, const char *devname, void *dev_id);
+
+static irqreturn_t irq_default_primary_handler(int irq, void *dev_id)
+{
+    return IRQ_WAKE_THREAD;
+}
+1
+2
+3
+4
+5
+6
+7
+8
+10.4 中断共享
+
+共享中断的多个设备申请中断时，都应该使用IRQF_SHARED标志，申请成功的前提： 
+该中断未被申请
+该中断虽然被申请了，但是之前申请的该中断的所有设备也都以IRQF_SHARED标志申请该中断
+尽管内核模块可以访问的全局地址都可以作为request_irq(…，void *dev_id)的最后一个参数dev_id，但是设备结构体指针显示可传入的最佳参数
+中断到来时，会遍历执行共享此中断的所有中断处理程序，直到某个函数返回IRQ_HANDLED 
+在中断处理程序顶半部中，应根据硬件寄存器中的信息比照传入的dev_id参数迅速判断是否为本设备的中断，若不是，应迅速返回IRQ_NONE
+10.5 内核定时器
+
+10.5.1 内核定时器编程
+
+1、timer_list结构体
+
+内核定时器的数据结构 
+定时器期满后，function()成员将被执行 
+data成员是其传入的参数
+expires成员是定时器的到期时间（jiffies）
+struct timer_list {
+    struct list_head entry;
+
+    unsigned long expires;
+    void (*function)(unsigned long);
+    unsigned long data;
+
+    struct tvec_base *base;
+    /* ... */
+};
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+定义一个名为my_timer的定时器
+struct timer_list my_timer;
+1
+2、初始化定时器
+
+init_timer是一个宏，用来初始化timer_list的entry的next为NULL，并给base指针赋值
+void init_timer(struct timer_list *timer);
+1
+TIMER_INITALIZER(_function，_expires, _data)宏用于赋值定时器结构体的function、expires、data和base成员
+DEFINE_TIMER(_name,_function,_expires,_data)宏是定义并初始化定时器成员的“快捷方式”
+setup_timer()也可以用于初始化定时器并赋值其成员
+3、增加定时器
+
+注册内核定时器，将定时器加入到内核的动态定时器链表中
+void add_timer(struct timer_list *timer);
+1
+4、删除定时器
+
+del_timer_sync()是del_timer的同步版，在删除一个定时器时需要等待其被处理完，因此该函数的调用不能发生在中断上下文中
+int del_timer(struct timer_list *timer);
+1
+5、修改定时器
+
+mod_timer()函数修改定时器的到期时间，在新的被传入的expires到来后才会执行定时器函数
+int mod_timer(struct timer_list *timer, unsigned long expires);
+1
+6、定时器的使用流程
+
+-----------使用定时器的步骤--------------
+struct timer_list  my_timer_list;//定义一个定时器，可以把它放在你的设备结构中 struct{定义一个定时器}
+init_timer(&my_timer_list);//初始化一个定时器
+my_timer_list.expire=jiffies+HZ;//定时器1s后运行服务程序
+my_timer_list.function=timer_function;//定时器服务函数
+add_timer(&my_timer_list);//添加定时器
+void timer_function(unsigned long)//写定时器服务函数
+del_timer(&my_timer_list);//当定时器不再需要时删除定时器
+del_timer_sync(&my_timer_list);//基本和del_timer一样，比较适合在多核处理器使用，一般推荐使用del_timer_sync
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10.6 内核延时
+
+10.6.1 短延时
+
+内核提供的纳秒、微妙和毫秒的延时 
+忙等待，根据CPU的频率进行一定次数的循环
+毫秒延时对内核来说是很大的，最好不要直接用，可以用替代性函数
+void ndelay(unsigned long nsecs);
+void udelay(unsigned long usecs);
+void mdelay(unsigned long msecs);
+
+//毫秒延时的替代性函数
+vooid msleep(unsigned int millisecs);
+unsigned long msleep_interruptible(unsigned int millisecs);
+void ssleep(unsigned int seconds);
+1
+2
+3
+4
+5
+6
+7
+8
+10.6.2 长延时
+
+比较当前的jiffies和目标jiffies，直到未来的jiffies到达目标jiffies
+time_before()与time_after()函数：将传入的未来时间jiffies和被调用时的jiffies进行一个简单的比较 
+为了防止在比较过程中编译器对jiffies的优化，内核将其定义为volatile变量，这将保证每次都会重新读取这个变量
+//延迟100个jiffies
+unsigned long delay = jiffies +100;
+while(time_before(jiffies, delay));
+//在延迟2s
+unsigned long delay = jiffies + 2*Hz;
+while(time_before(jiffies, delay));
+1
+2
+3
+4
+5
+6
+10.6.3 睡着延时
+
+睡着延时：是在等待的时间到来之前进程处于睡眠状态，CPU资源被其他的进程使用
+schedule_timeout()可以使当前任务休眠至指定的jiffies之后再重新被调用执行 
+schedule_timeout的实现原理是向系统添加一个定时器，在定时器处理函数中唤醒与参数对应的进程
+下面函数可以将当前进程添加到等待队列中，从而在等待队列上睡眠，当超时发生时，进程将它们唤醒
+sleep_on_timeout(wait_queue_head_t *q, unsigned long timeout);
+interruptible_sleep_on_timeout(wait_queue_head_t *q, unsignd long timeout);
+
+《Linux4.0设备驱动开发详解》笔记--第十一章：内存与I/O访问
+
+2016年05月20日 13:45:10 zcj仲从建 阅读数 1952
+版权声明：本文为博主原创文章，未经博主允许不得转载。 https://blog.csdn.net/z1106609486/article/details/51461080
+由于Linux系统提供了复杂的内存管理功能，所以内存的概念在Linux系统中的相对复杂，有常规的内存、高端的内存、虚拟地址、逻辑地址、总线地址、物理地址、I/O内存、设备内存、预留内存等概念
+11.1 CPU与内存、I/O
+
+11.1.1 内存空间与I/O空间
+
+I/O空间:在X86处理器中存在着I/O空间的概念，I/O空间是相对于内存空间而言的
+它通过特定的指令in、out来访问
+指令格式:IN 累加器,{端口号|DX}
+OUT {端口号|DX},累加器
+1
+2
+注意:目前大多数嵌入式微控制例如ARM、PowerPC等不提供I/O空间，而仅存在内存空间。 内存空间可以直接通过地址、指针来访问
+11.1.2 内存管理单元MMU
+
+作用:辅助操作系统进行内存管理，提供虚拟地址和物理地址的映射、内存访问权限保护和Cache缓存控制等硬件支持。
+虚拟内存机制可以让用户感觉好像程序可以使用非常大的内存空间
+
+MMU操作原理:
+
+TLB：转换旁路缓存，是MMU的核心部件，缓存少量虚拟地址和物理地址的转换关系，是转换表的Cache，也成为快表
+TTW：转换表漫游，当TLB中没有对应缓冲对应的地址转换关系时，需要通过对内存中转换表(一般为多级页表)的访问来得到虚拟地址和物理地的对应关系。TTW成功后，会将对应的转换关系写入TLB，方便下次转换 
+若TLB中没有虚拟地址的入口，则转换表遍历硬件从存放于主存储器的转换表中获取地址转换信息和访问权限(也就是获得TTW啦),同时将信息放入TLB，它或者被放在一个没有使用的入口或者替换一个已经存在的端口，以后当再次访问这些地址时，对真是物理地址的访问将在Cache或者在内存中发生
+ARM中的TLB条目中的控制信息用于控制对对应地址的访问权限及Cache的操作 
+C(高速缓存)和B(缓冲)位被用来控制对应地址的高速缓存和写缓冲，并决定是否进行告诉缓存
+访问权限和域位作用用来控制读写访问是否被允许，如果不允许将发送一个异常
+11.2 Linux内存管理
+
+Linux系统中，进程4GB的内存空间被分成两个部分:用户空间和内核空间 
+用户空间地址:0~3GB
+内核空间地址:3~4GB
+用户进程通常只能访问用户空间的虚拟地址，不能访问内核空间的虚拟地址 
+用户进程只有通过系统调用的方式才能访问到内核空间
+内核空间与用户空间的区别: 
+每个进程的用户空间都是完全独立的用户进程各自拥有不同的页表
+内核空间是由内核负责映射的，它不会跟着进程改变，是固定的
+内核地址空间有自己独立的页表
+Linux内核空间(1GB)的划分: 
+常规内存:
+物理内映射区(896MB):系统物理内存被顺序映射在内核空间的这个区域
+高端内存:
+虚拟内存分配区(其实地址:VMALLOC_START~VMALLOC_END,用vmalloc()函数分配)
+高端页面映射区(起始地址:PKMAP_BASE)
+专用页面应设置区(地址为FIXADDR_START~FIXADDR_TOP) 系统保留映射区
+物理内存超过4GB的处理办法 
+此时必须使用CPU的扩展分页(PAE)模式提供的64位页目录才能取到4GB以上的物理内存
+11.3 内存读取:
+
+11.3.1 用户空间内存动态申请
+
+申请:malloc()
+释放:free()
+11.3.2 内核空间内存动态申请
+
+1、相关函数关系:
+
+kmalloc()与 - __get_free_pages() 
+kmalloc()和__get_free_pages()申请的内存位于物理内存映射区，并且是连续的，它与真实的物理地址一般只差一个固定的偏移
+vmalloc() 
+vmalloc()在虚拟地址空间给出一块连续的内存区，实质上这段连续的虚拟内存在物理内存中并不一定连续。也没简单的换算关系
+2、具体函数详解
+
+kmalloc(size_t size,int flags); 
+参数 
+size:分配大小
+flag:分配标识 
+GFP_KERNEL(最常用)，在内核空间进程中申请内存
+GFP_USER，用来为用户空间分配内存，可能阻塞
+GFP_HINSTANCE,与GFP_USER类似但是是从高端内存分配
+GFP_NOIO,不允许任何IO初始化
+GFP_NOFS，不允许任何文件系统调用
+__GFP_DMA,要求分配在能够DMA的内存区
+__GFP_HINSTANCE，指示分配的内存区可以位于高端内存
+注意：kmalloc()其实就是依赖于_get_free_pages()函数实现的
+__get_free_pages(unsigned int flags,unsigned int order); 
+介绍:此宏是Linux内核本质上最底层用于获取空闲内存的方法 
+因为底层的伙伴算法总是以页的2的n次方为单位管理空闲内存，所以最底层的内存申请总是以页为单位的
+参数 
+order:分配的页数是2^order
+flags:同kmalloc
+相关宏 
+get_zeroed_pages()(申请的同时将页清空)
+__get_free_page()(申请一页，不清零) 
+上述两个宏在实现中调用了alloc_pages()函数 
+alloc_pages()既可以在内核空间分配，也可以在用户空间分配
+对应的释放函数：free_page(s)()
+__get_free_pages(unsigned int flags,unsigned int order);
+get_zeroed_page(unsigned int flags);
+__get_free_page(unsigned int flags);
+
+struct page*alloc_pages(int gfp_mask,unsigned long order);
+
+//__get_free_pages()函数对应的释放函数
+void free_page(unsigned long addr);
+void free_pages(unsigned long addr,unsigned long order);
+1
+2
+3
+4
+5
+6
+7
+8
+9
+vmalloc函数 
+使用情况 
+一般只为存在于软件中（没有对应的硬件意义）的较大的顺序缓存区分配内存，其远大于__get_free_pages()的开销
+其不能用于原子上下文中 
+因为其内部实现使用了标志为GFP_KERNEL的kmalloc()
+vmalloc()的虚拟地址和物理地址不是一个简单的线性映射 
+因为vmolloc()在申请内存时，会进行内存的映射，改变页表项
+void *vmalloc(unsigned long size);
+void vfree(void *addr);
+1
+2
+slab与内存池: 
+引入slab的原因: 
+完全使用页为单元申请和释放内存容易导致浪费
+在操作系统的运行过程中，经常涉及到对大量对象的重复生成、使用和释放问题，此时使用slab可以大大提高效率
+实际上kmalloc()就是使用slab机制实现的
+使用方法: 
+创建一个slab缓存：kmem_cache_create() 
+它可以保留任意数目且全部同样大小的后备缓存
+参数 
+size：要分配的每个数据结构的大小
+flags：控制如何进行分配的位掩码 
+SLAB_HWCACHE_ALIGN：每个数据对象呗对齐到一个缓存行
+SLAB_CACHE_DMA：要求数据对象在DMA区域中的分配
+分配slab缓存：kmem_cache_alloc(); 
+创建的slab后备缓存中分配一块并返回首地址指针
+释放slab缓存：kmem_cache_free(); 
+释放由kmem_cache_alloc()函数分配的缓存
+收回slab缓存：kmem_cache_destroy();
+获知当前的slab的分配和使用情况：cat /proc/slabinfo
+注意：slab不是要替代__get_free_pages(),其在最底层仍然依赖于__get_free_pages()，slab在底层每次申请1页或多页，之后在分隔这些页为更小的单元进行管理，从而节省了内存，也提高了slab缓冲对象的访问效率
+//1.创建slab缓存
+struct kmem_cache *kmem_cache_create(const char *name, size_t size, size_t align, unsigned long flags,
+void (*ctor)(void*, struct kmem_cache*, unsigned long),
+void (*dtor)(void*,struct kmem_cache*, unsigned long));
+//2.分配slab缓存
+void *kmem_cache_alloc(struct kmem_cache *cachep, gfp_t flags);
+//3.释放slab函数
+void kmem_cache_free(struct kmem_cache *cachep, void objp);
+//4.收回slab缓存
+int kmem_cache_destroy(struct kmem_cache *cachep);
+
+//slab缓存使用范例:
+//创建slab缓存
+static kmem_cache_t *xxx_cachep;
+xxx_cachep = kmem_cache_create("xxx", sizeof(struct xxx), 0, SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL, NULL);
+//分配slab缓存
+struct xxx *ctx;
+ctx = kmem_cache_alloc(xxx_cachep, GFP_KERNEL);
+...
+//释放slab缓存
+kmem_cache_free(xxx_cachep, ctx);
+kmem_cache_destroy(xxx_cachep);
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+内核中，与内存池相关的操作包括以下几种 
+创建内存池：mempool_create(); 
+参数 
+min_nr参数是需要预分配对象的数目
+alloc_fn和free_fn是指向内存池基础值提供的标准对象分配和回收函数的指针 
+其原型分别为 
+mempool_alloc_t(); 
+参数 
+pool_data：分配和回收函数用到的指针
+gfp_mask：是分配标志，只有当__GFP_WAIT标志被指定时，分配函数才会休眠
+mempool_free_t();
+分配和回收函数 
+mempool_alloc(); 
+用来分配对象，如果内存池分配器无法提供内存，那么久可以用预分配的池
+mempool_free();
+回收内存池：mempool_destroy(); 
+由mempool_create()函数创建的内存池需要mempool_destroy()函数释放
+//1.创建内存池
+mempool_t *mempool_create(int min_nr, menpool_alloc_t *alloc_fn, menpool_free_t * free_fn, void *pool_data);
+//内存池机制提供的标准对象分配和回收函数指针的原型分别为
+typedef void *(mempool_alloc_t)(int gfp_mask, void *pool_data);
+和
+typedef void (mempool_free_t)(void *element, void *pool_data);
+//2.分配和回收对象
+void *mempool_alloc(mempool_t, int gfp_mask);
+void mempool_free(void *element, mempool_t *pool);
+//3.回收内存池
+void mempool_destroy(mempool_t *pool);
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+11.4 设备I/O端口和I/O内存的访问
+
+设备通常提供一组寄存器来控制设备，读写设备和获取设备状态，及控制寄存器、数据寄存器和状态寄存器。这些寄存器可能位于I/O空间中，也可能位于内存空间中。当位于I/O空间时候，通常称为I/O端口；但位于内存空间时，对应的内存空间称为I/O内存
+11.4.1 Linux I/O端口和I/O内存访问接口
+
+1. I/O端口
+
+Linux内核提供的访问位于I/O空间的端口 
+丅述个函数中I/O端口号port高度依赖于具体的硬件平台，因此，这里只写出了unsigned
+//1.读写字节端口（8位）
+unsigned inb(unsigned port);
+void outb(unsigned char byte, unsigned port);
+//2.读写字端口
+unsigned inw(unsined port);
+void outw(unsigned short word, unsigned port);
+//3.读写长字端口
+unsigned inl(unsigned port);
+void outl(unsigned longword, unsigned port);
+//4.读写一串字节
+void insb(unsigned port, void *addr, unsigned long count);
+void outsb(unsigned port, void *addr, unsigned long count);
+//5.insb()从端口port开始读count个字节端口，并将读取结果接入addr指向的内存；outsb()将addr指向的内存中的count个字节连续的写入以port开始的端口
+//6.读写一串字
+void insw(unsigned port, void *addr unsigned long count);
+void outse(unsigned port, void *addr, unsignd long count);
+//7.读写一串长字
+void insl(unsigned port, void *addr, unsigned log count);
+void outsl(unsigned port, void *addr, unsigned long count);
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+2. I/O内存
+
+I/O内存通常是芯片内部的哥哥I2C、SPI、USB等控制器的寄存器后者外部内存总线的设备。在访问I/O内存之前首先要做的是将设备所处的物理地址映射到虚拟地址。
+//将物理地址映射到虚拟地址
+void *ioremap(unsigned long offset,unsigned long size)
+//释放
+void ionumap(void * addr);
+//ioremap()函数的变体函数devm_ioremap()，它不需要再驱动退出或者出错的时候进行iounmap().
+void __iomem *devm_ioremap(struct device* dev, resource_size_t offset, unsigned long size);
+1
+2
+3
+4
+5
+6
+在设备地址被映射到虚拟地址之后，尽管可以直接通过指针访问这些地址，但是Linux内核推荐使用一组标准的API开完成设备内存映射的虚拟地址的读写
+I/O内存读写操作: 
+没有_relaxed后缀的版本与有_relaxed后缀的版本的区别是没有_relaxed后缀的版本包含一个内存屏障
+//1.读I/O内存
+#define readb(c)   ({u8 __v = readb_relaxed(c);__iomb();__v;})
+#define readw(c)   ({u16 __v = readb_relaxed(c);__iomb();__v;})
+#define readl(c)   ({u32 __v = readb_relaxed(c);__iomb();__v;})
+//2.写I/O内存
+#define writeb(v,c)   ({u8 __v = readb_relaxed(c);__iomb();__v;})
+#define readw(v,c)   ({u16 __v = readb_relaxed(c);__iomb();__v;})
+#define readl(v,c)   ({u32 __v = readb_relaxed(c);__iomb();__v;})
+1
+2
+3
+4
+5
+6
+7
+8
+11.4.2 申请和释放设备I/O端口和内存
+
+1. I/O端口申请
+
+linux内核提供一组函数申请和释放I/O端口，表明该驱动要访问这片区域 
+申请：request_region() 
+这个函数向内核申请n个端口，这些端口从first开始，name参数为设备的名字
+返回值 
+成功：返回非NULL
+失败：返回NULL
+释放I/O端口：release_region()
+struct resource *request_region(unsigned long first,unsigned long n,const char*name);
+
+void release_region(unsigned long start,unsigned long n);
+1
+2
+3
+2. I/O 内存申请
+
+Linux内核已提供了一组函数以申请和释放I/O内存的范围，此处的“申请”表明，该驱动要访问这片区域，他不会做任何内存映射的动作 
+内存申请：request_mem_region() 
+这个函数向内核申请n个内存地址，这个地址从first开始，name是设备参数的名称
+返回值 
+成功：返回值非NULL
+失败：返回NULL
+内存释放：release_mem_region()
+struct resource *request_mem_region(unsigned long start, unsigned long len, char *name);
+
+void release_mem_region(unsigned long start, unsigned long len);
+1
+2
+3
+11.4.3 设备I/O端口和I/O内存访问流程
+
+I/O端口的访问: 
+request_region()：在设备打开或驱动模块被加载时申请I/O端口区域
+inb()/outb()：使用inb()、outb()等函数进行访问
+release_region()：在设备关闭或驱动被卸载时释放I/O端口范围
+I/O内存访问步骤 
+request_mem_region()：首先申请资源
+ioremap()：将寄存器地址通过映射到内核空间虚拟地址
+readb/readl/writeb/writel：通过这些函数访问设备的寄存器
+iounmap()+release_mem_region()：访问完成之后，对ioremap()申请的虚拟地址进行释放，并释放release_mem_region()申请的I/O内存资源
+11.4.4 将设备地址映射到用户空间
+
+1.内存映射与VMA
+
+一般情况下用户空间是不能也不应该直接访问设备但是我们可以通过在设备驱动程序中实现mmap()函数，这个函数可以使得用户空间能直接访问物理设备
+mmap() 
+函数的实质 
+将用户空间的一段内存与设备内存关联，当用户访问用户空间的这段地址范围时，实际上会转化为对应的设备的访问。
+mmap()函数必须以页为单位进行映射
+驱动程序mmap()的实现机制也是建立页表
+驱动中的mmap()函数将在用户空间进行mmap()系统调用时被调用
+参数 
+fd：文件描述符
+len：是映射到用户空间的字节数
+prot：指定访问权限 
+PROT_READ
+PROT_WRITE
+PROT_EXEC
+PROT_NONE
+caddr:指定文件应该被映射的起始地址，一般被指定为NULL，由内核分配
+//驱动中mmap()函数原型:
+int (*mmap)(struct file *,struct vm_area_struct *);
+
+//用户空间的mmap()函数原型:
+caddr_t mmap(caddr_t addr,size_t len,int prot,int flags,int fd,off_t offset);
+1
+2
+3
+4
+5
+用户调用mmap()时所进行的工作 
+(1) 在进程的虚拟地址空间查找一块VMA
+(2) 将这块VMA进行映射
+(3) 如果设备驱动程序或者文件系统的file_operations定义了mmap()操作则调用它
+(4) 将这个VMA插入到进程的VMA表中
+VMA结构体 
+虚拟地址的描述通过VMA结构体来实现
+VMA结构体描述的虚拟地址位于vm_start ~vm_end之间
+struct vm_area_struct
+{
+struct mm_struct *vm_mm;/*所处的地址空间*/
+unsigned long vm_start;/*开始虚拟地址*/
+unsigned long vm_end;/*结束虚拟地址*/
+
+
+pgprot_t vm_page_prot;/*访问权限*/
+unsigned long vm_flags;/*标识，VM_READ,WM_WRITE,VM_EXEC,VM_SHARED*/
+...
+/*VMA的函数的指针*/
+struct vm_operations_struct *vm_ops;
+
+
+unsigned long vm_pgoff;/*偏移(页帧号)*/
+struct file *vm_file;
+void *vm_private_data;
+....
+
+};
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+vm_operations_structk结构体 
+此结构体描述了对VMA的相关操作
+当用户进行系统调用mmap()后，内核不会调用VMA的open函数， 
+通常需要在驱动的mmap()函数中显示调用vma->vm_ops->open()
+struct vm_operations_struct{
+    void(*open)(struct vm_area_struct *area);/*打开vma的操作*/
+    void (*close)(..)
+    struct page*(nopage)(...)/*访问的页不存在时调用*/
+    ...
+};
+1
+2
+3
+4
+5
+6
+vm_operations_struct操作范例 
+重要函数 
+remap_pfn_range() 
+作用 
+用来创建页表项 
+以VMA结构体的成员作为remap_pfn_range()的参数 
+VMA的数据成员是内核根据用户的请求自己填充的
+映射的虚拟地址范围是vma->vm_start至vma->vm_end
+映射内存中的保留页、设备I/O、framebuffer、camera等内存
+参数 
+addr:表示内存映射开始处的虚拟地址
+pfn:是虚拟地址应该映射到的物理地址的页帧号 
+实际上就是物理地址右移PAGE_SHIFT位
+页帧号：内核地址无论是虚拟的还是物理的，都是由两部分构成，往往是高N位为页号，低M位为页内偏移量。当我们将地址中的低M位偏移量抛弃时，高N位移动到右端得到这个结果称为页帧号，宏PAGE_SHIFT告诉我们要右移多少位才能得到页帧号
+port：新页所要求的保护属性
+static int xxx_map(struct file*filp,struct vm_area_struct *vma)
+{
+   /*建立页表*/
+    if(remap_pfn_range(vma,vma->start,vm->vm_pgoff,
+    vm->vm_end-vma->start,vma->page_prot))
+    return -EAGAIN;
+
+    vma->ops = &xxx_remap_vmops;
+    xxx_vma_open(vma);
+    return 0;
+}
+
+/*vma打开函数*/
+void xxx_vm_open(struct vm_area_struct *vma)
+{
+    ...
+    printk(KERNEL "xxx VMA open,virt %1x,phys %1x\n",vma->vm_start,
+    vma->vm_pgoff<<PAGE_SHIFT);
+}
+
+/*vma关闭函数*/
+void xxx_vma_close(struct vm_area_struct *vma)
+{
+    ...
+    printk(KERN_NOTICE "xxx VMA close.\n");
+}
+
+static struct vm_operations_struct xxx_remap_vm_ops = {
+    /*VMA操作结构体*/
+    .open =  xxx_vm_open,
+    .close = xxx_vma_close,
+    ...
+};
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+//remap_pfn_range函数原型
+remap_pfn_range(struct vm_area_struct *vma,unsigned long addr,unsigned long pfn,unsigned long size,pgprot_t prot);
+1
+2
+例程：映射kmalloc申请的内存到用户空间 
+注意：通常I/O内存被映射时需要nocahe的，这个时候需要对vma_page_prot设置nocache标识之后再进行映射
+
+/*内核模块加载函数*/
+int __init kmalloc_map_init(void)
+{
+    ...
+    /*申请设备号
+    添加cdev结构体*/
+    buffer = kmalloc(BUFSIZE,GFP_KERNEL);//申请buffer
+
+    /*virt_to_page,获取对应的虚拟页*/
+    for(page = virt_to_page(buffer);
+    page<vir_to_page(buffer+BUFSIZE);
+    page++)
+    mem_map_reverse(page);/*设置为保留页*/
+}
+
+/*mmap()函数*/
+static int kmalloc_map_mmap(struct file*filp,struct vm_area_struct *vma)
+{
+    unsigned long page,pos;
+    unsigned long start = (unsigned long)vma->vm_start;
+    unsigned long size  = (unsigned long)(vma->vm_end-vma->vm_start);
+    printk(KERNEL_INFO "mmaptest_mmap called\n");
+
+    /*用户要映射的区域太大*/
+    if(size>BUFSIZE)
+    return -EINVAL;
+
+    pos = (unsigned long)buffer;
+    /*映射buffer中的所有页*/
+    while(size > 0){
+    /*每次映射一页*/
+    page = virt_to_phys((void *)pos);//先将在内核中用malloc分配的空间转换为对应的物理页地址
+    if(remap_page_range(start,page,PAGE_SIZE,PAGE_SHARED));/*将物理页地址映射到vma，并且每次只映射一页*/
+    return - EAGAIN;
+    start += PAGE_SIZE;
+    pos +=PAGE_SIZE;
+    size -=PAGE_SIZE;
+    }return 0;
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+2. fault()函数
+
+简介:除了remap_pfn_range函数以外，在驱动程序中实现VMA的fault()函数可以为设备提供，更加灵活的映射途径，当访问的页不存在(发生缺页异常)时，fault()会被内核自动调用
+当发生缺页异常时系统做出的响应: 
+(1).找到缺页的虚拟地址所在的VMA
+(2).如果不要，分配中间页目录表和页表
+(3).如果也表项不存在，调用VMA的nopage()方法，返回物理页面的描述符
+(4).将物理页面的地址填充到页表中
+fault()函数使用范例
+static int xxx_fault(struct vm_area_struct *vm, struct vm_fault *vmf)
+{
+    unsigned log paddr;
+    unsigned long pn;
+    pgoff_t index = vmf->pgoff;
+    struct vma_data *vdata = vma->vm_private_data;
+    ...
+    pfn = paddr >> PAGE_SHIFT;
+    vm_inset_pfn(vam, (unsigned long)vmf->virtual_address, pfn);
+
+    return VM_FAULT_NOPAGE;
+}
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+11.5 I/O内存的静态映射
+
+简介:假如我们已经做好目标电路板，而要将Linux移植到目标电路板，此时通常会建立外I/O内存物理地址到虚拟地址的静态映射，这个映射通过在与电路板对应的map_desc结构体数组中添加新的成员来完成
+map_desc结构体
+struct map_desc{
+    unsigned long virtual;//虚拟地址
+    unsigned long pfn;    //__phys_to_phn(phy_addr)
+    unsigned long length; //大小
+    unsigned int type;    //类型
+};
+1
+2
+3
+4
+5
+6
+11.6 DMA（重点）
+
+DMA:是一种无序CPU帮助就可以让外设与系统之间进行双向数据传输的硬件机制简单点说就是这个样子 外设<———->内存 
+而不是传统的 外设<—-cpu—–>内存
+DMA与Cache的一致性问题:
+假设DMA针对内存的目的地址与Cache缓存的对象有重叠区域，那么经过DMA操作后，Cache缓存对应的内存的数据就会被修改，而CPU却并不知道，它仍然会认为Cache中的数据就是内存中的数据，此时会产生Cache与内存之间的数据”不一致”错误
+DMA与Cache的一致性实质
+在采用Cache的系统中，同样一个数据可能存在于Cache中，也可能存在于主存中，当Cache中的数据与主存中的一样时则具有一致性，否则数据具有不一致性
+出现Cache的一致性问题的情况 
+DMA与Cache的一致性问题
+Cache使能和关闭的时刻 
+在具有MMU的ARM中，开启MMU前要先置Cache无效
+11.6.2 Linux下的DMA编程
+
+内存中用于与外设交互数据的一块区域被称为DMA缓冲区，一般情况下DMA在物理上连续的
+1. DMA 区域
+
+对于X86系统的ISA设备而言，DMA操作只能在16MB一下的内存中使用，因此在用kmalloc()和__get_free_pages()及类似的函数申请DMA缓冲区时应使用GFP_DMA标志，这样获得的DMA 
+区域是具备DMA能力的
+Linux内核已经把此操作为我们封装好了 
+__get_dma_page()：它在申请时已经添加了GFP_DMA标志 
+函数是以2^order为大小分配的DMA内存
+#define __get_dma_pages(gfp_mask,order)\
+__get_free_pages((gfp_mask)|GFP_DMA,(order))
+1
+2
+如果不想用order为参数来申请DMA内存，则可以用下面的函数
+static unsigend long dma_mem_alloc(int size);
+1
+注意：大多数嵌入式设备而言,DMA操作可以在整个常规内存区域进行，因此DMA区域就直接覆盖了常规的内存了
+2.虚拟地址、物理地址和总线地址
+
+基于DMA的硬件使用的是总线地址而不是物理地址 
+总线地址:是从设备的角度上看到的内存地址 
+物理地址:是从CPU MMU控制器外围角度上看到的内存地址
+Linux内核提供如下函数用于简单的虚拟地址/总线地址的转换 
+在使用IOMMU或反弹缓冲区的情况下，下述函数不会正常工作
+这两个函数是不被建议使用的
+unsigned long virt_to_bus(volate void *address);
+void *bus_to_virt(unsigned long address);
+1
+2
+3.DMA地址掩码
+
+设备不一定在所有的内存地址上执行DMA操作，此时应该通过下列函数执行DMA地址掩码
+int dma_set_mask(struct device*dev,u64 mask);
+1
+ - 例如:对于只能在24位地址上执行DMA操作的设备，就应该使用如下方法 dma_set_mask(dev,0xffffff)
+1
+该API的本质就是修改device结构体的dma_mask成员 
+dma_mask：设备DMA可以寻址的范围
+4.一致性DMA缓冲区
+
+DMA缓冲区包括两个方面的工作: 
+1.分配一片DMA缓冲区(为这片缓冲区产生设备可以访问的地址)
+2.DMA映射必须考虑Cache一致性问题
+内核提供如下函数用于分配就一个DMA一致性的内存区域 
+ama_alloc_coherent()函数 
+参数handle返回DMA缓冲区的总线地址，其类型为dma_addr_t，表示总线地址
+返回值：为申请到的DMA缓冲区地址
+void *ama_alloc_coherent(struct device *dev,size_t size,dma_addr_t handle,gfp_t gfp)
+1
+与ama_alloc_coherent()函数对应的释放函数
+void dma_free_coherent(struct device *dev, size_t size, void *cpu_addr, dma_addr_t handle);
+1
+分配一个写合并的DMA缓冲区函数与其释放函数
+void * dma_alloc_writecombine(struct device *dev, size_t size, dma_addr_t *handle, gfp_t gfp);
+
+#definedma_free_writecombine(dev,size,cpu_addr,handle)  dma_free_coherent(dev,size,cpu_addr,handle)
+1
+2
+3
+PCI设备申请DMA缓冲区的函数
+void * pci_alloc_consistent(struct pci_dev *pdev, size_t size, dma_addr_t *dma_addrp);
+
+void pci_free_consistent(struct pci_dev *pdev, size_t size, void *cpu_addr, dma_addr_t dma_addr);
+1
+2
+3
+注意：dma_alloc_xxx()函数虽然是以dma_alloc_开头的，但是其申请 的区域比一定在DMA区域里面，例如，以32ARM为例，当coherent_dma_mask小于0xfffffff时，才会设置GFP_DMA标志，并从DMA区域去申请内存
+
+CMA机制：不预留内存，这些内存平时是可用的，只有当需要的时候，才被分配给camera、HDMI等设备使用
+
+其对上呈现的接口是标准的DMA，也是一致性缓冲区API
+5. 流式DMA映射
+
+并不是所有的DMA缓冲区的申请都是驱动申请的，如果是驱动申请的，用一致性的DMA缓冲区自然最方便，这直接考虑了DMA的一致性问题。但是，在许多情况下，缓冲区来自内核的上层（如网卡驱动中的网络报文、块设备驱动中要写入的数据等），上层很可能用普通的kmalloc()、__get_free_pages()等方法来申请，这时候就要使用流式DMA映射
+流式DMA的工作步骤 
+进行流式DMA映射
+执行DMA操作
+进行流式DMA去映射
+流式DMA本质上是进行Cache的使无效或清除操作，以解决Cache的一致性问题
+
+流式DMA映射的接口
+
+实现DMA的映射函数：dma_map_single() 
+参数 
+direction：DMA的方向 
+DMA_TO_DEVICE
+DMA_FROM_DEVICE
+DMA_BIDIRECTIONAL
+DMA_NONE
+返回值 
+成功：返回总线的地址
+失败：返回NULL
+反映射函数：dma_unmap_single()
+dma_addr_t dma_map_single(struct device *dev，void *bufer, size_t size, enum dma_data_direction direction);
+
+void dma_unmap_single(struct device *dev, dma_addr_t dma_addr, size_t size, enum dma_data_direction direction);
+1
+2
+3
+6. dmaengine标准API
+
+Linux内核目前推荐使用dmaengine的驱动来编写DMA控制器的驱动，同时外设的驱动使用标准的dmaengine API进行DMA的准备、发起和完成时的回调工作
+在使用DMA前，设备驱动程序需要首相向dmaengine系统申请DMA通道
+申请DMA通道的函数：dma_request_slave_channel();
+struct dma_chan *dma_request_slave_channel(struct device *dev, const char *name);
+
+struct dma_chan *__dma_request_channel(const dma_cap_mask_t *mask, dma_filter_fn fn, void *fn_param);
+1
+2
+3
+释放申请的通道
+void dma_release_chammel(struct dma_chan* chan);
+1
+例程：利用dmaengine初始化并发起一次DMA操作
+static void xxx_dma_fini_callback(void *data)
+{
+    struct completion *dma_complete = data;
+    complete(dma_complete);
+}
+
+issue_xxx_dma(...)
+{
+    rx_desc = dmaengine_prep_slave_single(xxx->rx_chan,xxx->dst_start, t->len, DMA_DEV_TO_MEN, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+    rx_desc->callback = xxx_dma_fini_callback;
+    rx_desc-。callback-param = &xxx->rx_done;
+
+    dmaengine_submit(rx_desc);
+    dma_async_issue_pending(xxx->rx_chan);
+}
+
+《Linux4.0设备驱动开发详解》笔记--第十二章：Linux设备驱动的软件架构思想
+
+《Linux4.0设备驱动开发详解》笔记--第十三章：Linux块设备驱动
+
+《Linux4.0设备驱动开发详解》笔记--第十四章：Linux网络设备驱动
+
+《Linux4.0设备驱动开发详解》笔记--第十五章：Linux I2C核心、总线与设备驱动
+
+2016年05月20日 13:49:38 zcj仲从建 阅读数 4701
+ 版权声明：本文为博主原创文章，未经博主允许不得转载。 https://blog.csdn.net/z1106609486/article/details/51461127
+15.1 Linux I2C体系结构
+
+I2C核心 
+I2C核心提供了I2C总线驱动和设备驱动的注册、注销的方法，I2C通信（Algorithm）方法上层的与具体适配器无关代码以及探测设备、检测设备地址的上层代码等
+I2C总线驱动 
+是对I2C体系结构中适配器端的实现，适配器可由CPU控制，甚至可以直接集成在CPU内部
+总线驱动包含I2C适配器数据结构i2c_adapter、I2C适配器的Algorithm数据结构i2c_algorithm和控制I2C适配器产生通信信号的函数
+I2C设备驱动 
+它是对I2C硬件体系结构中设备端的实现，设备一般挂接在受CPU控制的I2C适配器上，通过I2C适配器与CPU通信
+I2C驱动主要包含数据结构i2c_driver和i2c_client，需要根据的设备实现其中的成员函数
+所有的I2C设备都在sysfs文件系统中显示，存在/sys/bus/i2c目录下，以适配器地址和芯片地址的形式列出
+/drivers/i2c/下的文件介绍 
+i2c-core.c：实现了I2C核心的功能以及/proc/bus/i2c*接口
+i2c-dev.c：实现I2C适配器设备文件的功能，每一个适配器被分配一个设备 
+设配器的主设备号位89，次设备号位：0-255
+i2c_dev.c并不是根据具体的设备而设计的，只是提供了同用的read()、write()和ioctl()等接口，应用层可以通过这些接口访问挂接在适配器上的I2C设备的存储空间或寄存器，并控制I2C设备的工作方式
+busses文件夹：包含一些I2C主机控制器驱动，如i2c_omap.c、i2c_s3c2440c.等
+algos文件夹：实现了一些I2C总线适配器的通信方法
+i2c_adapter、i2c_algorithm、i2c_driver和i2c_client数据结构的作用及其之间的关系 
+i2c_adapter与i2c_algorithm 
+i2c_adapter对应于物理上的一个适配器，而i2c_algorithm对应于一套通信方法
+一个i2c_adapter需要i2c_algorithm提供的通信函数来控制适配器产生特定的访问周期
+i2c_algorithm中的关键函数master_xfer()用于产生I2C访问周期需要的信号，以i2c_msg（即I2C消息）为单位
+i2c_driver与i2c_client 
+i2c_driver对应于一套驱动方法，struct i2c_device_id形式的id_table是该驱动所支持的I2C设备的ID表
+i2c_client对应于真实的物理设备，每个I2C设备都需一个i2c_client来描述
+一个i2c_driver支持多个同类型的i2c_client
+i2c_client的信息通常在BSP的板文件中通过i2c_board_info填充，包括设备的ID号、地址、中断号等信息
+在I2C总线驱动i2c_bus_type的match()函数i2c_device_match()中，会调用i2c_match_id()函数匹配在板文件中定义的ID和i2c_driver所支持的ID表
+i2c_adapter与i2c_client 
+其关系与I2C设备体系中适配器与设备的关系一致，即i2c_client依附于i2c_driver
+一个i2c_driver可以被多个i2c_client依附，i2c_driver中包含有依附它的i2c_client的链表
+15.2 I2C核心
+
+增加、删除i2c_adapter
+int i2c_add_adapter(struct i2c_adapter *adap);
+int i2c_del_adapter(struct i2c_adapter *adap);
+1
+2
+增加、删除i2c_driver
+int i2c_register_driver(struct module *owner, struct i2c_driver *driver);
+int i2c_del_driver(struct i2c_driver *driver);
+inline int i2c_add_driver(struct i2c_driver *driver);
+1
+2
+3
+4
+i2c_client依附/脱离
+int i2c_attach_client(struct i2c_client *client);
+int i2c_detach_client(struct i2c_client *client);
+1
+2
+当一个具体的client被侦测到并被关联的时候，设备和sysfs文件将被注册。相反地，在client被取消关联的时候，sysfs文件和设备也被注销 
+代码清单15.6 I2C核心client attach/detach函数
+
+1  int i2c_attach_client(struct i2c_client *client)
+2  {
+3    ...
+4   device_register(&client->dev);
+5   device_create_file(&client->dev, &dev_attr_client_name);
+6   
+7   return 0;
+8  }
+9  
+10 int i2c_detach_client(struct i2c_client *client)
+11 {
+12   ...
+13  device_remove_file(&client->dev, &dev_attr_client_name);
+14  device_unregister(&client->dev);
+15   ...
+16 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+I2C传输、发送和接收
+int i2c_transfer(struct i2c_adapter * adap, struct i2c_msg *msgs, int num);
+int i2c_master_send(struct i2c_client *client,const char *buf ,int count);
+int i2c_master_recv(struct i2c_client *client, char *buf ,int count);
+1
+2
+3
+4
+i2c_transfer ()函数用于进行I2C适配器和I2C设备之间的一组消息交互，i2c_master_send()函数和i2c_master_recv()函数内部会 调用i2c_transfer()函数分别完成一条写消息和一条读消 
+例如：
+
+代码清单15.7 I2C核心i2c_master_send函数
+1  int i2c_master_send(struct i2c_client *client,const char *buf ,int count)
+2  {
+3   int ret;
+4   struct i2c_adapter *adap=client->adapter;
+5   struct i2c_msg msg;
+6    /*构造一个写消息*/
+7   msg.addr = client->addr;
+8   msg.flags = client->flags & I2C_M_TEN;
+9   msg.len = count;
+10  msg.buf = (char *)buf;
+11  /*传输消息*/
+12  ret = i2c_transfer(adap, &msg, 1);
+13 
+14  return (ret == 1) ? count : ret;
+15 }
+代码清单15.8 I2C核心i 2c_master_recv函数
+1  int i2c_master_recv(struct i2c_client *client, char *buf ,int count)
+2  {
+3   struct i2c_adapter *adap=client->adapter;
+4   struct i2c_msg msg;
+5   int ret;
+6   /*构造一个读消息*/
+7   msg.addr = client->addr;
+8   msg.flags = client->flags & I2C_M_TEN;
+9   msg.flags |= I2C_M_RD;
+10  msg.len = count;
+11  msg.buf = buf;
+12  /*传输消息*/
+13  ret = i2c_transfer(adap, &msg, 1);
+14 
+15  /* 成功（1条消息被处理）， 返回读的字节数 */
+16  return (ret == 1) ? count : ret;
+17 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+i2c_transfer()函数本身不具备驱动适配器物理硬件完成消息交互的能力，它只是寻找到i2c_adapter对应的i2c_algorithm，并使用i2c_algorithm的master_xfer()函数真正驱动硬件流程，如下例程：
+
+I2C核心i 2c_transfer函数
+1  int i2c_transfer(struct i2c_adapter * adap, struct i2c_msg *msgs, int num)
+2  {
+3   int ret;
+4  
+5   if (adap->algo->master_xfer) {
+6    down(&adap->bus_lock);
+7    ret = adap->algo->master_xfer(adap,msgs,num); /* 消息传输 */
+8    up(&adap->bus_lock);
+9    return ret;
+10  } else {
+11   dev_dbg(&adap->dev, "I2C level transfers not supported\n");
+12   return -ENOSYS;
+13  }
+14 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+15.3 Linux I2C总线驱动
+
+15.3.1 I2C适配器驱动加载与卸载
+
+I2C总线驱动模块的加载函数要完成两个工作： 
+初始化I2C适配器所使用的硬件资源，申请I/O地址、中断号等。
+通过i2c_add_adapter()添加i2c_adapter的数据结构，当然这个i2c_adapter数据结构的成员已经被xxx适配器的相应函数指针所初始化。
+I2C总线驱动模块的卸载函数要完成的工作与加载函数的相反： 
+释放I2C适配器所使用的硬件资源，释放I/O地址、中断号等。
+通过i2c_del_adapter()删除i2c_adapter的数据结构。
+代码清单给出了I2C适配器驱动模块加载和卸载函数的模板。
+I2C总线驱动模块加载和卸载函数模板
+1  static int __init i2c_adapter_xxx_init(void)
+2  {
+3    xxx_adpater_hw_init();
+4    i2c_add_adapter(&xxx_adapter);
+5  }
+6  
+7  static void __exit i2c_adapter_xxx_exit(void)
+8  {
+9    xxx_adpater_hw_free();
+10   i2c_del_adapter(&xxx_adapter);
+11 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+ - 上述代码中xxx_adpater_hw_init()和xxx_adpater_hw_free()函数的实现都与具体的CPU和I2C设备硬件直接相关。
+1
+15.3.2 I2C总线通信方法
+
+我们需要为特定的I2C适配器实现其通信方法，主要实现i2c_algorithm的master_xfer()函数和functionality()函数。 
+functionality()函数用于返回algorithm所支持的通信协议，如I2C_FUNC_I2C、I2C_FUNC_10BIT_ADDR、SMBUS_READ_BYTE、I2C_FUNC_SMBUS_WRITE_BYTE等。
+master_xfer()函数在I2C适配器上完成传递给它的i2c_msg数组中的每个I2C消息
+代码给出了xxx设备的master_xfer()函数模板。
+I2C总线驱动master_xfer函数模板
+1  static int i2c_adapter_xxx_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs,
+2    int num)
+3  {
+4    ...
+5    for (i = 0; i < num; i++)
+6    {
+7      i2c_adapter_xxx_start(); /*产生开始位*/
+8      /*是读消息*/
+9      if (msgs[i]->flags &I2C_M_RD)
+10     {
+11       i2c_adapter_xxx_setaddr((msg->addr << 1) | 1); /*发送从设备读地址*/
+12       i2c_adapter_xxx_wait_ack(); /*获得从设备的ack*/
+13       i2c_adapter_xxx_readbytes(msgs[i]->buf, msgs[i]->len); /*读取msgs[i]
+14         ->len长的数据到msgs[i]->buf*/
+15     }
+16     else
+17      /*是写消息*/
+18     {
+19       i2c_adapter_xxx_setaddr(msg->addr << 1); /*发送从设备写地址*/
+20       i2c_adapter_xxx_wait_ack(); /*获得从设备的ack*/
+21       i2c_adapter_xxx_writebytes(msgs[i]->buf, msgs[i]->len); /*读取msgs[i]
+22         ->len长的数据到msgs[i]->buf*/
+23     }
+24   }
+25   i2c_adapter_xxx_stop(); /*产生停止位*/
+26 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+ - 上述代码实际上给出了一个master_xfer()函数处理I2C消息数组的流程，对于数组中的每个消息，判断消息类型，若为读消息，则赋从设备地址为    (msg->addr << 1) | 1，否则为msg->addr << 1。对每个消息产生1个开始位，紧接着传送从设备地址，然后开始数据的发送或接收，对最后的消息还需产生1个停止位。图15.3描述了整个master_xfer()完成的时序。
+1
+多数I2C总线驱动会定义一个xxx_i2c结构体，作为i2c_adapter的algo_data（类似“私有数据”） 
+xxx_i2c结构体包含I2C消息数组指针、数组索引及I2C适配器algorithm访问控制用的自旋锁、等待队列等
+master_xfer()函数完成消息数组中消息的处理也可通过对xxx_i2c结构体相关成员的访问来控制。
+1  struct xxx_i2c 
+2  {
+3   spinlock_t  lock;
+4   wait_queue_head_t wait;  
+5   struct i2c_msg  *msg;
+6   unsigned int  msg_num;
+7   unsigned int  msg_idx;
+8   unsigned int  msg_ptr;
+9   ...
+10  struct i2c_adapter adap;
+11 };
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+15.4 linux I2C设备驱动
+
+15.4.1 Linux I2C设备驱动模块加载与卸载
+
+I2C设备驱动模块加载函数通用的方法是在I2C设备驱动模块加载函数中完成两件事： 
+通过register_chrdev()函数将I2C设备注册为一个字符设备。
+通过I2C核心的i2c_add_driver()函数添加i2c_driver。
+在模块卸载函数中需要做相反的两件事： 
+通过I2C核心的i2c_del_driver()函数删除i2c_driver。
+通过unregister_chrdev()函数注销字符设备。
+1  static int __init yyy_init(void)
+2  {
+3    int res;
+4    /*注册字符设备*/
+5    res = register_chrdev(YYY_MAJOR, "yyy", &yyy_fops); //老内核接口
+6    if (res)
+7      goto out;
+8    /*添加i2c_driver*/
+9    res = i2c_add_driver(&yyy_driver);
+10   if (res)
+11     goto out_unreg_class;
+12   return 0;
+13 
+14   out_unreg_chrdev: unregister_chrdev(I2C_MAJOR, "i2c");
+15   out: printk(KERN_ERR "%s: Driver Initialisation failed\n", __FILE__);
+16   return res;
+17 }
+18 
+19 static void __exit yyy_exit(void)
+20 {
+21   i2c_del_driver(&i2cdev_driver);
+22   unregister_chrdev(YYY_MAJOR, "yyy");
+23 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+15.4.2 Linux I2C设备驱动的数据传输
+
+I2C设备上的读写数据的时序且数据通常通过i2c_msg消息数组进行组织，最后通过i2c_transfer函数完成
+1  static int yyy_cmd1(struct i2c_client *client, struct rtc_time *dt)
+2  {
+3   struct i2c_msg msg[2];
+4   /*第一条消息是写消息*/
+5   msg[0].addr = client->addr;
+6   msg[0].flags = 0;
+7   msg[0].len = 1;
+8   msg[0].buf = &offs;
+9   /*第二条消息是读消息*/
+10  msg[1].addr = client->addr;
+11  msg[1].flags = I2C_M_RD;
+12  msg[1].len = sizeof(buf);
+13  msg[1].buf = &buf[0];
+14  
+15  i2c_transfer(client->adapter, msg, 2);
+16   ...
+17 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+15.4.3 Linux i2c-dev.c文件分析
+
+i2c-dev.c文件可以被看作一个I2C设 备驱动，它实现的一个i2c_client是虚拟的、临时的，随着设备文件的打开而产生，并随设备文件的关闭而撤销，并没有被添加到i2c_adapter的clients链表中。
+
+i2c-dev.c针对每个I2C适配器生成一个主设备为89的设备文件，实现了i2c_driver的成员函数以及文件操作接口
+
+i2c-dev.c的主体是“i2c_driver成员函数 + 字符设备驱动”。
+
+i2c-dev.c中提供i2cdev_read()、i2cdev_write()函数来对应用户空间要使用的read()和 write()文件操作接口，这两个函数分别调用I2C核心的i2c_master_recv()和i2c_master_send()函数来构造1条 I2C消息并引发适配器algorithm通信函数的调用，完成消息的传输
+
+i2c-dev.c中i2cdev_read()和i2cdev_write()函数不具备太强的通用性，没有太大的实用价值，只能适用于非RepStart模式的情况。
+
+对于2条以上消息组成的读写，在用户空间需要组织i2c_msg消息数组并调用I2C_RDWR IOCTL命令。
+
+代码给出了i2cdev_ioctl()函数的框架，其中详细列出了I2C_RDWR命令的处理过程。
+
+ i2c-dev.c中的i2cdev_ioctl函数
+1  static int i2cdev_ioctl(struct inode *inode, struct file *file,
+2    unsigned int cmd, unsigned long arg)
+3  {
+4   struct i2c_client *client = (struct i2c_client *)file->private_data;
+5    ...  
+6   switch ( cmd ) {
+7   case I2C_SLAVE:
+8   case I2C_SLAVE_FORCE:
+9    ...   /*设置从设备地址*/
+10  case I2C_TENBIT:
+11   ...
+12  case I2C_PEC:
+13   ...
+14  case I2C_FUNCS:
+15   ...  
+16  case I2C_RDWR:
+17   if (copy_from_user(&rdwr_arg, 
+18        (struct i2c_rdwr_ioctl_data __user *)arg, 
+19        sizeof(rdwr_arg)))
+20    return -EFAULT;
+21   /* 一次传入的消息太多 */
+22   if (rdwr_arg.nmsgs > I2C_RDRW_IOCTL_MAX_MSGS)
+23    return -EINVAL;
+24   /*获得用户空间传入的消息数组
+25   rdwr_pa = (struct i2c_msg *)
+26    kmalloc(rdwr_arg.nmsgs * sizeof(struct i2c_msg), 
+27    GFP_KERNEL);    
+28   if (rdwr_pa == NULL) return -ENOMEM;
+29   if (copy_from_user(rdwr_pa, rdwr_arg.msgs,
+30        rdwr_arg.nmsgs * sizeof(struct i2c_msg))) {
+31    kfree(rdwr_pa);
+32    return -EFAULT;
+33   }
+34   data_ptrs = kmalloc(rdwr_arg.nmsgs * sizeof(u8 __user *), GFP_KERNEL);
+35   if (data_ptrs == NULL) {
+36    kfree(rdwr_pa);
+37    return -ENOMEM;
+38   }
+39   res = 0;
+40   for( i=0; i41    /* 限制消息的长度 */
+42    if (rdwr_pa[i].len > 8192) {
+43     res = -EINVAL;
+44     break;
+45    }
+46    data_ptrs[i] = (u8 __user *)rdwr_pa[i].buf;
+47    rdwr_pa[i].buf = kmalloc(rdwr_pa[i].len, GFP_KERNEL);
+48    if(rdwr_pa[i].buf == NULL) {
+49     res = -ENOMEM;
+50     break;
+51    }
+52    if(copy_from_user(rdwr_pa[i].buf,
+53     data_ptrs[i],
+54     rdwr_pa[i].len)) {
+55      ++i; /* Needs to be kfreed too */
+56      res = -EFAULT;
+57     break;
+58    }
+59   }
+60   if (res < 0) {
+61    int j;
+62    for (j = 0; j < i; ++j)
+63     kfree(rdwr_pa[j].buf);
+64    kfree(data_ptrs);
+65    kfree(rdwr_pa);
+66    return res;
+67   }
+68    /*把这些消息交给通信方法去处理*/
+69   res = i2c_transfer(client->adapter,
+70    rdwr_pa,
+71    rdwr_arg.nmsgs);
+72   while(i-- > 0) {   /*如果是读消息，把值拷贝到用户空间*/
+73    if( res>=0 && (rdwr_pa[i].flags & I2C_M_RD)) {
+74     if(copy_to_user(
+75      data_ptrs[i],
+76      rdwr_pa[i].buf,
+77      rdwr_pa[i].len)) {
+78      res = -EFAULT;
+79     }
+80    }
+81    kfree(rdwr_pa[i].buf);
+82   }
+83   kfree(data_ptrs);
+84   kfree(rdwr_pa);
+85   return res;
+86  case I2C_SMBUS:
+87   ... 
+88  default:
+89   return i2c_control(client,cmd,arg);
+90  }
+91  return 0;
+92 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+ - 常用的IOCTL包括I2C_SLAVE（设置从设备地址）、I2C_RETRIES（没有收到设备ACK情况下的重试次数，缺省为1）、I2C_TIMEOU（超时）以及I2C_RDWR。
+1
+下面两个代码分别演示了直接通过read()、write()接口和O_RDWR IOCTL读写I2C设备的例子。
+
+代码清单15.23 直接通过read()/write()读写I2C设备
+1  #include 
+2  #include 
+3  #include 
+4  #include 
+5  #include 
+6  #include 
+7  #include 
+8  
+9  #define I2C_RETRIES     0x0701
+10 #define I2C_TIMEOUT     0x0702
+11 #define I2C_SLAVE       0x0703
+12 
+13 int main(int argc, char **argv)
+14 {
+15   unsigned int fd;
+16   unsigned short mem_addr;
+17   unsigned short size;
+18   unsigned short idx;
+19   #define BUFF_SIZE    32
+20   char buf[BUFF_SIZE];
+21   char cswap;
+22   union
+23   {
+24     unsigned short addr;
+25     char bytes[2];
+26   } tmp;
+27 
+28   if (argc < 3)
+29   {
+30     printf("Use:\n%s /dev/i2c-x mem_addr size\n", argv[0]);
+31     return 0;
+32   }
+33   sscanf(argv[2], "%d", &mem_addr);
+34   sscanf(argv[3], "%d", &size);
+35 
+36   if (size > BUFF_SIZE)
+37     size = BUFF_SIZE;
+38 
+39   fd = open(argv[1], O_RDWR);
+40 
+41   if (!fd)
+42   {
+43     printf("Error on opening the device file\n");
+44     return 0;
+45   }
+46 
+47   ioctl(fd, I2C_SLAVE, 0x50); /* 设置eeprom地址 */
+48   ioctl(fd, I2C_TIMEOUT, 1); /* 设置超时 */
+49   ioctl(fd, I2C_RETRIES, 1); /* 设置重试次数 */
+50 
+51   for (idx = 0; idx < size; ++idx, ++mem_addr)
+52   {
+53     tmp.addr = mem_addr;
+54     cswap = tmp.bytes[0];
+55     tmp.bytes[0] = tmp.bytes[1];
+56     tmp.bytes[1] = cswap;
+57     write(fd, &tmp.addr, 2);
+58     read(fd, &buf[idx], 1);
+59   }
+60   buf[size] = 0;
+61   close(fd);
+62   printf("Read %d char: %s\n", size, buf);
+63   return 0;
+64 }
+代码清单15.24 通过O_RDWR IOCTL读写I2C设备
+1  #include 
+2  #include 
+3  #include 
+4  #include 
+5  #include 
+6  #include 
+7  #include 
+8  #include 
+9  #include 
+10 #include 
+11 
+12 #define MAX_I2C_MSG         2
+13 
+14 #define I2C_RETRIES     0x0701
+15 #define I2C_TIMEOUT     0x0702
+16 #define I2C_RDWR        0x0707
+17 
+18 struct i2c_msg
+19 {
+20   __u16 addr; /* 从地址 */
+21   __u16 flags;
+22   #define I2C_M_RD        0x01
+23   __u8 *buf; /* 消息数据指针 */
+24 };
+25 struct i2c_rdwr_ioctl_data
+26 {
+27   struct i2c_msg *msgs; /* i2c_msg[]指针 */
+28   int nmsgs; /* i2c_msg数量 */
+29 };
+30 
+31 int main(int argc, char **argv)
+32 {
+33   struct i2c_rdwr_ioctl_data work_queue;
+34   unsigned int idx;
+35   unsigned int fd;
+36   unsigned short start_address;
+37   int ret;
+38 
+39   if (argc < 4)
+40   {
+41     printf("Usage:\n%s /dev/i2c-x start_addr\n", argv[0]);
+42     return 0;
+43   }
+44 
+45   fd = open(argv[1], O_RDWR);
+46 
+47   if (!fd)
+48   {
+49     printf("Error on opening the device file\n");
+50     return 0;
+51   }
+52   sscanf(argv[2], "%x", &start_address);
+53   work_queue.nmsgs = MAX_I2C_MSG; /* 消息数量 */
+54 
+55   work_queue.msgs = (struct i2c_msg*)malloc(work_queue.nmsgs *sizeof(struct
+56     i2c_msg));
+57   if (!work_queue.msgs)
+58   {
+59     printf("Memory alloc error\n");
+60     close(fd);
+61     return 0;
+62   }
+63 
+64   for (idx = 0; idx < work_queue.nmsgs; ++idx)
+65   {
+66     (work_queue.msgs[idx]).len = 0;
+67     (work_queue.msgs[idx]).addr = start_address + idx;
+68     (work_queue.msgs[idx]).buf = NULL;
+69   }
+70 
+71   ioctl(fd, I2C_TIMEOUT, 2); /* 设置超时 */
+72   ioctl(fd, I2C_RETRIES, 1); /* 设置重试次数 */
+73 
+74   ret = ioctl(fd, I2C_RDWR, (unsigned long) &work_queue);
+75 
+76   if (ret < 0)
+77   {
+78     printf("Error during I2C_RDWR ioctl with error code: %d\n", ret);
+79   }
+80 
+81   close(fd);
+82   return ;
+83 }
+
+《Linux4.0设备驱动开发详解》笔记--第十六章：USB主机、设备与Gadget驱动
+
+《Linux4.0设备驱动开发详解》笔记--第十七章：I2C、SPI、USB驱动架构类比
+
+《Linux4.0设备驱动开发详解》笔记--第十八章：ARM Linux设备树
+
+2016年05月21日 12:52:36 zcj仲从建 阅读数 2552
+版权声明：本文为博主原创文章，未经博主允许不得转载。 https://blog.csdn.net/z1106609486/article/details/51469942
+18.1 ARM设备树简介
+
+设备舒适一种描述印鉴的数据结构，它起源于OpenFirmware（OF） 
+采用设备树前后对比： 
+采用设备树之前：ARM架构的板极硬件细节过多的被硬编码在arch/arm/plat-xxx和arch/arm/mach-xxx中
+采用设备树之后：许多硬件细节可以直接通过它传递给Linux，而不再需要在讷河中进行大量的冗余编码
+设备树的组成：由一系列被命名的节点（Node）和属性（Property）组成 
+节点本身有包含子节点
+属性：成对出现的名称和值
+设备树中可描述的信息包括： 
+CPU的数量和类别
+内存基地址和大小
+总线和桥
+外设链接
+中断控制器和中断使用情况
+GPIO控制器和GPIO使用情况
+时钟控制器核实中使用情况
+通俗描述： 
+它基本上就是画一颗电路板上CPU、总线、设备组成的树
+bootloader会将这棵树传递给内核
+内核可以识别这棵树，并根据他站开出Linux内核中的platform_device、i2c_client、spi_device等设备
+这些设备用到的内存、IRQ等资源，也被传递给了内核，内核会将这些资源绑定给展开的相应的设备
+18.2 设备树的组成和结构
+
+整个设备数牵涉买你比较广，既增加了新的用于描述设备硬件信息的文件格式，又增加了编译这个文本的工具，同时bootloader也需要支持将编译后的设备数传递给Linux内核
+18.2.1 DTS、DTC和DTB等
+
+18.2.1.1 DTS
+
+DTS：文件.dts是一种ASCII文本格式的设备树描述，人性化适合阅读 
+.dts的基本元素为节点和属性
+ARM Linux中，一个.dts文件对应一个ARM的设备，一般放置在内核的arch/arm/boot/dts目录中
+DTS不是ARM独有的：在arch/powerpc/boot/dts、arch/openrisc/boot/dts等目录中，也有大量的.dts文件
+SOC公用的部分或多个设备共同的部分一般提炼为.dtsi，类似C的头文件，其他设备对应的.dts就包含.dtsi 
+和C语言的头文件类似，.dtsi也可以包括其他的.dtsi，譬如几乎所有的ARM SOC的.dtsi都引用了skeleton.dtsi
+如下：设备数的模板 
+他基本表征了一个设备树源文件的结构 
+1个root节点”/”;
+root节点下面含一系列子节点，如代码中的child-node1和child-node2
+节点node1和下又含有一系列子节点，如本例中的child-node1和child-node2
+各个节点都有一系列属性 
+这些属性可能为空，如an-empty-property
+可能为字符串，如a-string-property
+可能为字符串树组，如a-string-list-property
+可能为Cells（由u32整数组成），如second-child-property
+可能为二进制数，如a-byte-data-property
+/ {
+    nodel {
+        a-string-property = "A string";
+        a-string-list-property = "first string", "second string"
+        a-byte-data-property = {0x01 0x23 0x34 0x56};
+        child-node {
+            first-child-property;
+            second-child-property = <1>
+            a-string-property = "Hello, world"
+        };
+        child-node2 {
+        };
+    };
+   node2 {
+        an-enpty-property;
+        a-cell-property = <1 2 3 4>; /* each munber (cell) is a uint32 */
+        child-node1 {
+        };
+    };
+};
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+简单的设备数文件实例 
+假设此machine的配置如下： 
+1个双核ARM Cortex-A9 32位处理器；
+ARM的local bus上的内存映射区域分布了 
+2个串口（分别位于0x101F1000 和 0x101F2000）
+GPIO控制器（位于0x101F3000）
+SPI控制器（位于0x10170000）
+中断控制器（位于0x10140000）
+一个external bus桥，该桥上又连接了 
+SMC SMC91111 Ethernet（位于0x10100000）
+64MB NOR Flash（位于0x30000000）
+I2C控制器（位于0x10160000），该I2C控制器所对应的I2C总线上又连接了 
+Maxim DS1338实时钟（I2C地址为0x58）
+其对应的.dts文件如下： 
+从代码可知，external-bus是根节点的子节点，I2C又是external-bus的子节点，RTC有进一步是I2C的子节点
+/ {
+    compatible = "acme,coyotes-revenge";
+    #address-cells = <1>;
+    #size-cells = <1>;
+    interrupt-parent = <&intc>;
+
+    cpus {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        cpu@0 {
+            compatible = "arm,cortex-a9";
+            reg = <0>;
+        };
+        cpu@1 {
+            compatible = "arm,cortex-a9";
+            reg = <1>;
+        };
+    };
+
+    serial@101f0000 {
+        compatible = "arm,pl011";
+        reg = <0x101f0000 0x1000 >;
+        interrupts = < 1 0 >;
+    };
+
+    serial@101f2000 {
+        compatible = "arm,pl011";
+        reg = <0x101f2000 0x1000 >;
+        interrupts = < 2 0 >;
+    };
+
+    gpio@101f3000 {
+        compatible = "arm,pl061";
+        reg = <0x101f3000 0x1000
+               0x101f4000 0x0010>;
+        interrupts = < 3 0 >;
+    };
+
+    intc: interrupt-controller@10140000 {
+        compatible = "arm,pl190";
+        reg = <0x10140000 0x1000 >;
+        interrupt-controller;
+        #interrupt-cells = <2>;
+    };
+
+    spi@10115000 {
+        compatible = "arm,pl022";
+        reg = <0x10115000 0x1000 >;
+        interrupts = < 4 0 >;
+    };
+
+    external-bus {
+        #address-cells = <2>
+        #size-cells = <1>;
+        ranges = <0 0  0x10100000   0x10000     // Chipselect 1, Ethernet
+                  1 0  0x10160000   0x10000     // Chipselect 2, i2c controller
+                  2 0  0x30000000   0x1000000>; // Chipselect 3, NOR Flash
+
+        ethernet@0,0 {
+            compatible = "smc,smc91c111";
+            reg = <0 0 0x1000>;
+            interrupts = < 5 2 >;
+        };
+
+        i2c@1,0 {
+            compatible = "acme,a1234-i2c-bus";
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <1 0 0x1000>;
+            interrupts = < 6 2 >;
+            rtc@58 {
+                compatible = "maxim,ds1338";
+                reg = <58>;
+                interrupts = < 7 3 >;
+            };
+        };
+
+        flash@2,0 {
+            compatible = "samsung,k8f1315ebm", "cfi-flash";
+            reg = <2 0 0x4000000>;
+        };
+    };
+};
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+18.2.1.2 DTC(Device Tree Compiler)
+
+DTC是将.dts编译为.dtb的工具 
+DTC的源代码位于内核的scripts/dtc目录中
+在Linux内核使能了Device Tree的情况下，编译内核的时候主机工具dtc会被编译出来，对应scripts/dtc/Makefile中的“hostprogs-y := dtc”这一hostprogs编译target
+Ubuntu中单独安装DTC：sudo apt-get install device-tree-compiler
+在Linux内核的arch/arm/boot/dts/Makefile中，描述了当某种SOC被选中后，哪些.dtb文件会被编译出来 
+如与VEXPRESS对应的.dtb如下： 
+在Linux下可以单独编译设备树文件，当在Linux内核下运行make dtbs时，若之前选择了ARCH_VEXPRESS，上述.dtb都会有对应的.dts编译出来，因为arch/arm/Makefile中包含有一个.dtbs编译目标项目
+dtb-$(CONFIG_ARCH_VEXPRESS) += vexpress-v2p-ca5s.dtb \
+        vexpress-v2p-ca9.dtb \
+        vexpress-v2p-ca15-tc1.dtb \
+        vexpress-v2p-ca15_a7.dtb \
+        xenvm-4.2.dtb
+1
+2
+3
+4
+5
+18.2.1.3 DTB(Device Tree Blob)
+
+文件.dtb是.dts被DTC编译后的二进制格式的设备树描述，可由Linux内核解析，UBOOT也可以识别 
+使用.dtb两种方式： 
+在制作NAND、SD启动映像时会留有一小片区域给.dtb文件单独存放，bootloader在引导内核时会先读取该.dtb到内存
+将.dtb直接和zImage绑定在一起做成一个映像文件，此时内核编译时需要使能CONFIG_ARM_APPENDED_DTB选项
+18.2.1.4 绑定（Bingding）
+
+设备树绑定文档(.txt)：描述对应节点的兼容性、必要的属性和可选的属性 
+文档位置：内核的Documentation/devicetree/bindings目录 
+其下又分为很多子目录，譬如，Documentation/devicetree/bindings/i2c/i2c-xiic.txt描述了Xilinx的I2C控制器
+文档主要内容： 
+关于该模块的最基本描述
+必需属性（Required Properties）的描述
+可选属性（Optional properties）的描述
+一个实例
+18.2.1.5 Bootloader
+
+使能设备树的bootloader配置 
+编译UBOOT的时候在config文件中加入：#define CONFIG_OF_LIBFDT
+在UBOOT中，可以从NAND、SD或者TFTP等任意介质中将.dtb读入内存 
+例如：假设.dtb放入的内存地址为0x71000000，之后可在UBOOT中运行fdt addr命令设置.dtb的地址 
+fdt的其他命令就变得可以使用，如fdt resize、fdt print等
+对于ARM来讲，可以通过bootz kernel_addr initrd_address dtb_address的命令来启动内核 
+dtb_address作为bootz或者bootm的最后一次参数，第一个参数为内核映像的地址，第二个参数为initrc的地址
+UBoot > fdt addr 0x71000000
+1
+18.2.2 根节点兼容性
+
+Linux内核通过根节点“/”的兼容性即可判断它启动的是什么设备 
+组织形式：,
+兼容性的包含成员 
+首个兼容性的字符串是板子级别的名字
+后面一个兼容性是芯片级别的名字
+两个字符串兼容性实例如例1： 
+代码中各个电路板的共性是兼容于arm，vexpress，尔特性分别兼容于：arm,vexpress,v2p-ca9/ca5s/ca15_a7
+多个字符串兼容性实例如例2： 
+第一个字符串是板子名字（很特定），第二个是芯片名字（比较特定），第三个是芯片系列的名字（比较通用）
+//例1
+//板子arch/arm/boot/dts/vexpress-v2p-ca9.dts兼容于"arm,vexpress,v2p-ca9"和“arm,vexpress”
+compatible = "arm,vexpress,v2p-ca9", "arm, vexpress"
+//板子arch/arm/boot/dts/vexpress-v2p-ca5s.dts兼容性如下：
+compatible = "arm,vexpress,v2p-ca5s", "arm, vexpress"
+//板子arch/arm/boot/dts/vexpress-v2p-ca15_a7.dts兼容性如下：
+compatible = "arm,vexpress,v2p-ca15_a7", "arm, vexpress"
+
+//例2
+//arch/arm/boot/dts/exymos4210-origen.dts的兼容性：
+compatible = "insignal,origen", "samsung,exynos4210", "samsung,exynos4"
+//arch/arm/boot/dts/exymos4210-universal_c210.dts的兼容性：
+compatible = "insignal,universal_c210", "samsung,exynos4210", "samsung,exynos4"
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+ARM Linux针对不同的电路板会建立由MACHINE_START和MACHINE_END包围起来的针对这个machine的一系列callback 
+ARM Linux3.x引入Device Tree之后，MACHINE_START变更为DT_MACHINE_START 
+DT_MACHINE_START中含有一个.dt_compat成员，用于表明相关的machine与.dts中root结点的compatible属性兼容关系
+如果Bootloader传递给内核的Device Tree中root结点的compatible属性出现在某machine的.dt_compat表中，相关的machine就与对应的Device Tree匹配，从而引发这一machine的一系列初始化函数被执行。
+ static const char * const v2m_dt_match[] __initconst = {
+         "arm,vexpress",
+         "xen,xenvm",
+         NULL,
+ };
+ DT_MACHINE_START(VEXPRESS_DT, "ARM-Versatile Express")
+         .dt_compat      = v2m_dt_match,
+         .smp            = smp_ops(vexpress_smp_ops),
+         .map_io         = v2m_dt_map_io,
+         .init_early     = v2m_dt_init_early,
+         .init_irq       = v2m_dt_init_irq,
+         .timer          = &v2m_dt_timer,
+         .init_machine   = v2m_dt_init,
+         .handle_irq     = gic_handle_irq,
+         .restart        = vexpress_restart,
+ MACHINE_END
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+Linux倡导针对多个SoC、多个电路板的通用DT machine，即一个DT machine的.dt_compat表含多个电路板.dts文件的root结点compatible属性字符串 
+如果这么多电路板的初始化序列不一样，可以透过以下API判断具体的电路板是什么 
+此API判断目前运行的板子或者SOC的兼容性，它匹配的是设备树根节点下的兼容性
+如果一个兼容包含多个字符串，譬如对于前面介绍的根节点兼容compatible = “samsung, universal_c210”, “samsung,exynos4210”,”samsung,exynos4”的情况，如下表达式都成立
+int of_machine_is_compatible(const char *compat) 
+
+of_machine_is_compatible("samsung,universal_c210")
+of_machine_is_compatible("samsung,exynos4210")
+of_machine_is_compatible("samsung,exynos4")
+1
+2
+3
+4
+5
+18.2.3 设备节点兼容性
+
+在.dts文件的每个设备节点中，都有一个兼容性属性，用于驱动和设备的绑定 
+兼容属性是一个字符串的列表，形式为”,” 
+第一个字符串表征节点代表的确切设备，是个特指
+第二个字符串表征可兼容的其他设备，涵盖更广的范围
+例如：在vexpress-v2m.dtsi中Flash节点如下 
+兼容属性的第2个字符串“cfi-flash”明显比第1个字符串“arm，vexpress-flash”涵盖范围更广
+flash@0,00000000 {
+compatible = "arm,vexpress-flash","cfi-flash";
+reg = <0 0x00000000 0x04000000>
+<1 0x00000000 0x04000000>;
+bank-width = <4>
+};
+1
+2
+3
+4
+5
+6
+使用设备树后，驱动需要与.dts中描述的设备节点进行匹配，从而使驱动的probe()函数执行 
+对于platform_driver而言，需要添加一个OF匹配表，如前文的.dts文件的“acme,a1234-i2c-bus”兼容I2C控制节点的OF匹配表，代码如下：
+对于i2c和spi从设备而言，同样也可以通过of_match_table添加匹配的.dts中的相关节点的兼容属性
+i2c和spi外设备驱动和设备树中设备节点的兼容属性还有一种弱势匹配方法——“别名”匹配 
+别名就是去掉兼容属性中manufacturer前缀后的部分
+//platform设备驱动中的of_match_table
+ static const struct of_device_id a1234_i2c_of_match[] = {
+         { .compatible = "acme,a1234-i2c-bus ", },
+         {},
+ };
+ MODULE_DEVICE_TABLE(of, a1234_i2c_of_match);
+
+ static struct platform_driver i2c_a1234_driver = {
+         .driver = {
+                 .name = "a1234-i2c-bus ",
+                 .owner = THIS_MODULE,
+                 .of_match_table = a1234_i2c_of_match,
+         },
+         .probe = i2c_a1234_probe,
+         .remove = i2c_a1234_remove,
+ };
+ module_platform_driver(i2c_a1234_driver);
+
+//i2c和spi设备驱动中的of_match_table
+ static const struct of_device_id wm8753_of_match[] = {
+         { .compatible = "wlf,wm8753", },
+         { }
+ };
+ MODULE_DEVICE_TABLE(of, wm8753_of_match);
+ static struct spi_driver wm8753_spi_driver = {
+         .driver = {
+                 .name   = "wm8753",
+                .owner  = THIS_MODULE,
+                 .of_match_table = wm8753_of_match,
+        },
+         .probe          = wm8753_spi_probe,
+         .remove         = wm8753_spi_remove,
+ };
+ static struct i2c_driver wm8753_i2c_driver = {
+         .driver = {
+                 .name = "wm8753",
+                 .owner = THIS_MODULE,
+                 .of_match_table = wm8753_of_match,
+         },
+         .probe =    wm8753_i2c_probe,
+         .remove =   wm8753_i2c_remove,
+         .id_table = wm8753_i2c_id,
+ };
+
+//spi的别名匹配
+   static int spi_match_device(struct device *dev, struct device_driver *drv) 
+   { 
+           const struct spi_device *spi = to_spi_device(dev); 
+          const struct spi_driver *sdrv = to_spi_driver(drv); 
+
+           /* Attempt an OF style match */ 
+           if (of_driver_match_device(dev, drv)) 
+                   return 1; 
+
+          /* Then try ACPI */ 
+          if (acpi_driver_match_device(dev, drv)) 
+                  return 1; 
+
+          if (sdrv->id_table) 
+                  return !!spi_match_id(sdrv->id_table, spi); 
+
+          return strcmp(spi->modalias, drv->name) == 0; 
+  } 
+  static const struct spi_device_id *spi_match_id(const struct spi_device_id *id,
+ const struct spi_device *sdev) 
+  { 
+          while (id->name[0]) { 
+                  if (!strcmp(sdev->modalias, id->name)) 
+                          return id; 
+                  id++; 
+          }
+          return NULL; 
+  }  
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+当一个驱动支持两个或多个设备的时候，这些不同的.dts文件中设备的兼容属性都会写入驱动OF匹配表 
+驱动可以通过bootloader传递给内核设备树中的真正节点的兼容属性以确定究竟是哪一种设备，从而不同设备不同处理
+Linux内核通过如下of_device_is_compatible的API来判断具体的设备是什么 
+除了上面方法，还可以采用在驱动的of_device_id表中填充.data成员的形式 
+例如，arch/arm/mm/cache-12x0.c支持“arm,1210-cache” “arm,p1310-cache” “arm,1220-cache”等多种设备
+int of_device_is_compatible(const struct device_node *device, const char *compat);
+1
+18.2.4 设备节点及label的命名
+
+root结点”/”的cpus子节点下面又包含2个cpu子结点，描述了此machine上的2个CPU，且它们的compatible 属性为”arm,cortex-a9”。
+
+cpus和cpus的2个cpu子结点的命名所遵循的组织形式为：[@] 
+<>中的内容是必选项，[]中的则为可选项
+name：是一个ASCII字符串，用于描述结点对应的设备类型，如3com Ethernet适配器对应的结点name宜为ethernet，而不是3com509
+@unit-address：如果一个结点描述的设备有地址，则应该给出 
+设备的unit-address地址也经常在其对应结点的reg属性中给出
+多个相同类型设备节点的name可以一样，只要unit-address不同即可，如本例中含有cpu@0、cpu@1以及serial@101f0000与serial@101f2000这样的同名结点
+ePAPR标准给出了节点命名的规范，具体可参考
+可以给一个设备节点添加label，之后可以通过&label的形式访问这个label，这种引用是通过phandle(pointer handle)进行的
+
+18.2.5 地址编码
+
+可寻址的设备使用如下信息在设备树中编码地址信息 
+reg的组织形式为reg =
+//代码1
+reg
+    #address-cells
+    #size-cells
+1
+2
+3
+4
+//代码2
+ranges = <0 0  0x10100000   0x10000     // Chipselect 1, Ethernet
+              1 0  0x10160000   0x10000     // Chipselect 2, i2c controller
+              2 0  0x30000000   0x1000000>; // Chipselect 3, NOR Flash
+1
+2
+3
+4
+18.2.6 中断连接
+
+对于中断控制器而言，它提供如下属性： 
+interrupt-controller – 这个属性为空，中断控制器应该加上此属性表明自己的身份
+#interrupt-cells – 与#address-cells 和 #size-cells相似，它表明连接此中断控制器的设备的interrupts属性的cell大小
+在整个Device Tree中，与中断相关的属性还包括： 
+interrupt-parent – 设备结点透过它来指定它所依附的中断控制器的phandle，当节点没有指定interrupt-parent 时，则从父级节点继承 
+对于本例而言，root节点指定了interrupt-parent = <&intc>;其对应于intc:interrupt-controller@10140000，而root节点的子节点并未指定interrupt-parent，因此它们都继承了intc，即位于0x10140000的中断控制器。
+interrupts – 用到了中断的设备节点透过它指定中断号、触发方法等，具体这个属性含有多少个cell，由它依附的中断控制器节点的#interrupt-cells属性决定。而具体每个cell又是什么含义，一般由驱动的实现决定，而且也会在Device Tree的binding文档中说明 
+譬如，对于ARM GIC中断控制器而言，#interrupt-cells为3，它3个cell的具体含义Documentation/devicetree/bindings/arm/gic.txt就有如下文字说明：
+    The 1st cell is the interrupt type; 0 for SPI interrupts, 1 for PPI
+    interrupts.
+
+    The 2nd cell contains the interrupt number for the interrupt type.
+    SPI interrupts are in the range [0-987].  PPI interrupts are in the
+    range [0-15].
+
+    The 3rd cell is the flags, encoded as follows:
+          bits[3:0] trigger type and level flags.
+                  1 = low-to-high edge triggered
+                  2 = high-to-low edge triggered
+                  4 = active high level-sensitive
+                  8 = active low level-sensitive
+          bits[15:8] PPI interrupt cpu mask.  Each bit corresponds to each of
+          the 8 possible cpus attached to the GIC.  A bit set to '1' indicated
+          the interrupt is wired to that CPU.  Only valid for PPI interrupts.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+一个设备还可能用到多个中断号 
+对于ARM GIC而言，若某设备使用了SPI的168、169号2个中断，而且都是高电平触发，则该设备结点的interrupts属性可定义为：interrupts = <0 168 4>, <0 169 4>;
+18.2.7 GPIO、时钟、pinmux连接
+
+除了中断以外，在ARM Linux中clock、GPIO、pinmux都可以透过.dts中的结点和属性进行描述
+18.3 Device Tree引发的BSP和驱动变更
+
+有了Device Tree后，大量的板级信息都不再需要，譬如过去经常在arch/arm/plat-xxx和arch/arm/mach-xxx实施的如下事情：
+
+18.3.1. 注册platform_device，绑定resource，即内存、IRQ等板级信息。
+
+通过设备树后，形如代码1中的platform_device代码都不再需要，其中platform_device会由kernel自动展开 
+这些resource实际来源于.dts中设备结点的reg、interrupts属性
+典型地，大多数总线都与“simple_bus”兼容，而在SoC对应的machine的.init_machine成员函数中，调用of_platform_bus_probe(NULL, xxx_of_bus_ids, NULL);即可自动展开所有的platform_device 
+譬如，假设我们有个XXX SoC，则可在arch/arm/mach-xxx/的板文件中透过如下方式展开.dts中的设备结点对应的platform_device：如代码2
+//代码1
+90 static struct resource xxx_resources[] = {
+91         [0] = {
+92                 .start  = …,
+93                 .end    = …,
+94                 .flags  = IORESOURCE_MEM,
+95         },
+96         [1] = {
+97                 .start  = …,
+98                 .end    = …,
+99                 .flags  = IORESOURCE_IRQ,
+100         },
+101 };
+102
+103 static struct platform_device xxx_device = {
+104         .name           = "xxx",
+105         .id             = -1,
+106         .dev            = {
+107                                 .platform_data          = &xxx_data,
+108         },
+109         .resource       = xxx_resources,
+110         .num_resources  = ARRAY_SIZE(xxx_resources),
+111 };
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+//代码2
+18 static struct of_device_id xxx_of_bus_ids[] __initdata = {
+19         { .compatible = "simple-bus", },
+20         {},
+21 };
+22
+23 void __init xxx_mach_init(void)
+24 {
+25         of_platform_bus_probe(NULL, xxx_of_bus_ids, NULL);
+26 }
+32
+33 #ifdef CONFIG_ARCH_XXX
+38
+39 DT_MACHINE_START(XXX_DT, "Generic XXX (Flattened Device Tree)")
+41         …
+45         .init_machine   = xxx_mach_init,
+46         …
+49 MACHINE_END
+50 #endif
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+18.3.2 注册i2c_board_info，指定IRQ等板级信息。
+
+形如代码1之类的i2c_board_info代码，目前不再需要出现
+//代码1
+145 static struct i2c_board_info __initdata afeb9260_i2c_devices[] = {
+146         {
+147                 I2C_BOARD_INFO("tlv320aic23", 0x1a),
+148         }, {
+149                 I2C_BOARD_INFO("fm3130", 0x68),
+150         }, {
+151                 I2C_BOARD_INFO("24c64", 0x50),
+152         },
+153 };
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+现在只需要把tlv320aic23、fm3130、24c64这些设备结点填充作为相应的I2C controller结点的子结点即可，类似于前面的代码2 
+Device Tree中的I2C client会透过I2C host驱动的probe()函数中调用of_i2c_register_devices(&i2c_dev->adapter);被自动展开。
+      i2c@1,0 {
+            compatible = "acme,a1234-i2c-bus";
+            …
+            rtc@58 {
+                compatible = "maxim,ds1338";
+                reg = <58>;
+                interrupts = < 7 3 >;
+            };
+        };
+1
+2
+3
+4
+5
+6
+7
+8
+9
+18.3.3 注册spi_board_info，指定IRQ等板级信息。
+
+如下的spi_board_info代码，目前不再需要出现
+79 static struct spi_board_info afeb9260_spi_devices[] = {
+80         {       /* DataFlash chip */
+81                 .modalias       = "mtd_dataflash",
+82                 .chip_select    = 1,
+83                 .max_speed_hz   = 15 * 1000 * 1000,
+84                 .bus_num        = 0,
+85         },
+86 };
+1
+2
+3
+4
+5
+6
+7
+8
+与I2C类似，现在只需要把mtd_dataflash之类的结点，作为SPI控制器的子结点即可，SPI host驱动的probe函数透过spi_register_master()注册master的时候，会自动展开依附于它的slave。
+18.3.4 多个针对不同电路板的machine，以及相关的callback。
+
+过去，ARM Linux针对不同的电路板会建立由MACHINE_START和MACHINE_END包围起来的针对这个machine的一系列callback，譬如： 
+[cpp] view plain copy 
+373 MACHINE_START(VEXPRESS, “ARM-Versatile Express”) 
+374 .atag_offset = 0x100, 
+375 .smp = smp_ops(vexpress_smp_ops), 
+376 .map_io = v2m_map_io, 
+377 .init_early = v2m_init_early, 
+378 .init_irq = v2m_init_irq, 
+379 .timer = &v2m_timer, 
+380 .handle_irq = gic_handle_irq, 
+381 .init_machine = v2m_init, 
+382 .restart = vexpress_restart, 
+383 MACHINE_END
+Device Tree之后，MACHINE_START变更为DT_MACHINE_START
+18.3.5 设备与驱动的匹配方式
+
+在上面介绍过
+18.3.6 设备平台数据属性化
+
+18.4 常用的OF API
+
+在Linux的BSP和驱动代码中，还经常会使用到Linux中一组Device Tree的API,这些API通常被冠以of_前缀，它们的实现代码位于内核的drivers/of目录。
+18.4.1 寻找节点
+
+根据compatible属性，获得设备结点 
+遍历Device Tree中所有的设备结点，看看哪个结点的类型、compatible属性与本函数的输入参数匹配
+大多数情况下，from、type为NULL。
+struct device_node *of_find_compatible_node(struct device_node *from, const char *type, const char *compatible);
+1
+18.4.2 读取属性
+
+int of_property_read_u8_array(const struct device_node *np, const char *propname, u8 *out_values, size_t sz);
+int of_property_read_u16_array(const struct device_node *np, const char *propname, u16 *out_values, size_t sz);
+int of_property_read_u32_array(const struct device_node *np, const char *propname, u32 *out_values, size_t sz);
+int of_property_read_u64(const struct device_node *np, const char *propname, u64 *out_value);
+1
+2
+3
+4
+读取设备结点np的属性名为propname，类型为8、16、32、64位整型数组的属性 
+对于32位处理器来讲，最常用的是of_property_read_u32_array() 
+如在arch/arm/mm/cache-l2x0.c中，透过如下语句读取L2 cache的”arm,data-latency”属性：
+534         of_property_read_u32_array(np, "arm,data-latency",
+535                                    data, ARRAY_SIZE(data));
+1
+2
+在arch/arm/boot/dts/vexpress-v2p-ca9.dts中，含有”arm,data-latency”属性的L2 cache结点如下：
+137         L2: cache-controller@1e00a000 {
+138                 compatible = "arm,pl310-cache";
+139                 reg = <0x1e00a000 0x1000>;
+140                 interrupts = <0 43 4>;
+141                 cache-level = <2>;
+142                 arm,data-latency = <1 1 1>;
+143                 arm,tag-latency = <1 1 1>;
+144         }
+1
+2
+3
+4
+5
+6
+7
+8
+有些情况下，整形属性的长度可能为1，于是内核为了方便调用者，又在上述API的基础上封装出了更加简单的读单一整形属性的API，它们为int of_property_read_u8()、of_property_read_u16()等，实现于include/linux/of.h：
+
+513 static inline int of_property_read_u8(const struct device_node *np,
+514                                        const char *propname,
+515                                        u8 *out_value)
+516 {
+517         return of_property_read_u8_array(np, propname, out_value, 1);
+518 }
+519
+520 static inline int of_property_read_u16(const struct device_node *np,
+521                                        const char *propname,
+522                                        u16 *out_value)
+523 {
+524         return of_property_read_u16_array(np, propname, out_value, 1);
+525 }
+526
+527 static inline int of_property_read_u32(const struct device_node *np,
+528                                        const char *propname,
+529                                        u32 *out_value)
+530 {
+531         return of_property_read_u32_array(np, propname, out_value, 1);
+532 }
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+处整形属性外，字符串属性也比较常用，其对应的API包括：
+
+int of_property_read_string(struct device_node *np, const char
+*propname, const char **out_string);
+int of_property_read_string_index(struct device_node *np, const char
+    *propname, int index, const char **output);
+1
+2
+3
+4
+前者读取字符串属性，后者读取字符串数组属性中的第index个字符串。如drivers/clk/clk.c中的of_clk_get_parent_name()透过of_property_read_string_index()遍历clkspec结点的所有”clock-output-names”字符串数组属性。
+
+1759 const char *of_clk_get_parent_name(struct device_node *np, int index)
+1760 {
+1761         struct of_phandle_args clkspec;
+1762         const char *clk_name;
+1763         int rc;
+1764
+1765         if (index < 0)
+1766                 return NULL;
+1767
+1768         rc = of_parse_phandle_with_args(np, "clocks", "#clock-cells", index,
+1769                                         &clkspec);
+1770         if (rc)
+1771                 return NULL;
+1772
+1773         if (of_property_read_string_index(clkspec.np, "clock-output-names",
+1774                                   clkspec.args_count ? clkspec.args[0] : 0,
+1775                                           &clk_name) < 0)
+1776                 clk_name = clkspec.np->name;
+1777
+1778         of_node_put(clkspec.np);
+1779         return clk_name;
+1780 }
+1781 EXPORT_SYMBOL_GPL(of_clk_get_parent_name);
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+处整形外、字符串以外的最常用属性类就是布尔类型，其对应的API如下
+
+static inline bool of_property_read_bool(const struct device_node *np, const char *propname);
+1
+如果设备结点np含有propname属性，则返回true，否则返回false。一般用于检查空属性是否存在。
+
+18.4.3 内存映射
+
+void __iomem *of_iomap(struct device_node *node, int index);
+1
+通过设备结点直接进行设备内存区间的 ioremap()，index是内存段的索引。若设备结点的reg属性有多段，可通过index标示要ioremap的是哪一段，只有1段的情况，index为0。采用Device Tree后，大量的设备驱动通过of_iomap()进行映射，而不再通过传统的ioremap。
+
+unsigned int irq_of_parse_and_map(struct device_node *dev, int index);
+1
+透过Device Tree或者设备的中断号，实际上是从.dts中的interrupts属性解析出中断号。若设备使用了多个中断，index指定中断的索引号。 
+还有一些OF API，这里不一一列举，具体可参考include/linux/of.h头文件。
+
+《Linux4.0设备驱动开发详解》笔记--第十九章：Linux电源管理的系统架构和驱动
+
+《Linux4.0设备驱动开发详解》笔记--第二十章：Linux芯片级移植及底层驱动
+
+《Linux4.0设备驱动开发详解》笔记--第二十一章：Linux设备驱动的调试
+
+2016年05月21日 12:58:48 zcj仲从建 阅读数 647
+ 版权声明：本文为博主原创文章，未经博主允许不得转载。 https://blog.csdn.net/z1106609486/article/details/51469968
+21.1 GDB调式的方法
+
+GDB的四个功能：
+
+启动程序，可以按照工程师自定义的要求运行程序
+让被调使得程序可以在指定的地方停住，断点可以是条件表达式
+当程序停住时，可以检查此程序发生的事，并追踪上文
+动态的改变程序的执行环境
+调式内核和应用程序时调试的命令是相同的
+
+基本命令
+
+list命令（缩写l）：列出代码 
+list ，显示程序第linenum行周围的源代码
+list ，显示函数名为function的函数源程序
+list，显示当前行前后的源程序
+list -，显示当前行前面的源程序
+run命令：运行程序
+程序运行参数 
+set args：指定运行时的参数，如set args 10 20 30
+show args：查看设置好的运行参数
+运行环境 
+path
+：设定程序的运行路径
+how paths：查看程序的运行路径
+set environment varname[=value]：设置环境变量，如set env USER=baohua;
+show environment[varname]：查看环境变量
+工作目录 
+cd
+：相当于shell的cd命令
+pwd：显示当前所在的目录
+程序的输入输出 
+info terminal：显示程序用到的终端的模式
+run>outfile：重定向控制程序输出
+tty：指定输入的终端设备，如tty/dev/ttyS1
+break命令 
+break：在进入指定函数时停住
+break：指定行号停住
+break+offset/break-offset：当前 行号的前面或者后面offset行停住
+break filename:linenum：在源文件filename的linenum行处停住
+break filename:function：在源文件filename的function函数处停住
+break*address：在程序运行的内存地址处停住
+break：break命令没有参数时，表示在下一条指令处停住
+beak…if：…可以是上述的break、break+offset/break-offset中的参数，condition表示条件，在条件成立时停住 
+例如：在循环体中，可以设置break if i=100，表示当i为100时停住程序
+info：查看断点，如info breakpoints[n]、info break[n]（n表示断点号）
+单步命令 
+step：单步跟踪，如果有函数调用，则进入该函数（进入该函数的前提是，此函数被编译有debug信息），默认一条条执行，加上count，执行后面count指令然后停止
+next：单步跟踪，有函数则跳过，不加count，一条条执行，加上count则执行后面count条之后停住
+set step-mode：set step-mode on用于打开step-mode模式 
+在进行step时，若跨过某没有调试信息的函数，程序的执行会在该函数的第一条指令处停住，而不会跳过整个函数，这样可以查看该函数的机器指令
+finish：运行程序，直到当前函数完成返回，并打印函数返回时的堆栈地址、返回值及参数值等信息
+until（缩写为u）：一直在循环体内执行单步而退步出来是一件令人烦恼的事情，用until命令可以运行程序直到退出循环体
+stepi(缩写为si)和nexti(缩写为ni)：这两个命里用于单步跟踪一条机器指令，step和next时C语言级别的命令 
+运行display/i $pc命令之后，单步跟踪会在大厨程序代买的同时打出机器指令，即汇编代码
+continue命令：当程序被停住后，可以用continue命令（缩写为c，fg命令同continue命令）恢复程序的执行直到程序结束，或到达下一个断点 
+命令格式为：continue/c/fg [ignore-count]，ignore-count表示忽略其后多少次断点
+例如：假设设置了函数断点add()，并观察i，则在continue过程中，每次遇到add()函数或者i发生变化，程序就会停住
+print命令：再掉是程序时，当程序被停住时，可以使用print命令（缩写为p），或是同义命令inspect来查看当前程序的运行数据 
+命令格式：print print / 其中是表达式，也是被调试的程序总的表达式，时输出的格式，比如，如果表达式按十六进制输出，则时/x 
+表达式中，有几种GDB所支持的操作符，他们可以用在任何一种语言中 
+@：是一个和数组有关的操作符
+:: ：指定一个在文件或是函数中的变量
+{}：表示一个指向内存地址的类型为type的对象
+例1：演示了查看sum[]数组的值的过程
+当需要查看一段连续内存空间的值时，可以使用GDB的@操作符，@的左边是第一个内存地址，@的右边是想查看内存的长度 
+例2：动态申请内存
+输出格式： 
+x：十六进制
+d：十进制
+u：按十六进制，显示无符号整型
+o：八进制
+t：二进制
+a：十六进制
+c：字符格式
+f：浮点数格式
+display命令：设置一些自动显示的变量，当程序停住时，或是单步跟踪时，这些变量会自动显示
+修改变量：print 变量=值
+当GDB的print查看程序运行时的数据时，每个print都会被GDB记录下来。GDB会以1，1，2，$3。。。这样的方式为每一个print命令编号，可以用这个编号访问前面的表达式
+watch命令：观察某个表达式（变量也是一种表达式）的值是否有了变化，有则马上停止运行 
+watch：为表达式expr设置一个观察点，一旦这个表达式发生了变化则停止运行
+rwatch：当表达式（变量）被读时，停止程序执行
+awatch：当表达式（变量）的值被读或者被写时，停止运行
+info watchpoints：列出当前所设置的所有观察点
+examine命令：查看内存地址中的值 
+语法：x/
+**//例1：**
+(gdb) print sum
+$2 = {133, 155, 0, 0, 0 ,0 ,0 ,0 ,0 ,0}
+(gdb) next
+
+Breakpoint 1, main () at gdb-example.c:25
+25         sum[i] = add(array1[i], array2[i]):
+(gdb) next
+23         for(i = 0; i< 10; i++)
+(gdb) print sum
+$3 = ({133, 155, 143, 0, 0 ,0 ,0 ,0 ,0 ,0}
+
+//例2：
+int *array = (int *) malloc (len * sizeof(int));
+在GDB调试过程中个，这样实现这个动态数组的值：
+p *array@len
+
+//例3：
+main()
+{
+    void *p = malloc(16);
+    while(1);
+}
+//用如下命令来修改p指向的内存
+(gdb) set *(unsigned char *)p='h'
+(gdb) set *(unsigned char *)p='e'
+(gdb) set *(unsigned char *)p='l'
+(gdb) set *(unsigned char *)p='l'
+(gdb) set *(unsigned char *)p='e'
+//查看结果
+（gdb） x/s p
+0x804b008 "hello"
+//查看函数func反汇编代码
+(gdb) disassemble func
+Dump of assembler code for function func:
+0x8048450 <func>:    push  %ebp
+0x8048451 <func+1> mov   %esp,%ebp
+...
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+21.2 内核调试
+
+21.2.1 内核打印信息—-printk()
+
+内核打印语句printk()会将内核信息输出到内核信息缓冲区中，内核缓冲区时候在kernel/printk.c中通过以下语句静态定义： 
+内核缓冲区是一个环形缓冲区（Ring Buffer），如果消息过多，则会将之前的消息冲刷掉
+static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
+1
+printk()的8个消息级别，分别是0~7，级别越低（数值越大），消息越不重要，0级时紧急事件级，7级时调试级
+
+#define KERN_EMERG “<0>”：紧急事件，一般是系统崩溃前的提示信息
+#define KERN_ALERT “<1>”：必须立即采取行动
+#define KERN_CRIT “<2>”：临界状态，通常涉及严重的硬件或软件操作失败
+#define KERN_ERR “<3>”：用于报告错误状态，设备驱动程序会经常调用KERN_ERR来报告来自硬件的问题
+#define KERN_WARNING “<4>”：对可能出现问题的情况进行警告，这类情况通常不会对系统造成严重的问题
+#define KERN_NOTICE “<5>”：有必要进行提示的正常情形，许多与安全相关的状况用这个级别进行汇报
+#define KERN_INFO “<6>”：内核提示信息，很多驱动程序在启动的时候，用这个级别打印他们找到的硬件信息
+#define KERN_DEBUG “<7>”：用于调试
+通过/proc/sys/kernel/printk文件可以调节printk()的输出等级，该文件有4个等级
+
+控制台日志级别：当前的打印级别，优先级高于该值的信息将被打印纸控制台
+默认的信息日志级别：将用该优先级来打印没有优先级前缀的消息，也就是直接写printk(“xxx”)而不带打印级别的情况下，会用该级别打印
+最低的控制台日志级别：控制台日志级别可被设置的最小值（一般都是1）
+默认的控制台日志级别：控制台日志级别的默认值 
+例5：Ubuntu上的输出级别
+//例5：Ubuntu上的输出级别
+$ cat /proc/sys/kernel/printk
+4   4   1   7
+1
+2
+3
+显示内核打印信息方法
+
+通过dmesg命令，如果使用dmesg -c命令，则不仅会显示__log_buf，还会清除该缓冲区的内容
+使用cat /proc/kmsg 命令，/proc/kmsg是一个“永无休止的文件”，因此，cat /porc/kmsg的进程只能通过“Ctrl+C”或kill终止
+设备驱动中的调试函数
+
+pr_debug()，pr_info() 
+使用pr_xxx()族API的好处是，可以在文件开头通过pr_fmt()定义一个打印格式
+例6：在kernel/watchdog.c的最开头通过如下定义可以保证之后watchdog.c调用的所有pr_xxx()打印的消息都自动带有“NMI watchdog: ”的前缀
+dev_debug()：如dev_dbg()、dev_err()、dev_info()等 
+使用dev_xxx()族API打印的时候，设备名称会被自动加到打印消息的前头
+打印的附加信息，例7 
+func：输出printk()调用所在的函数名
+LINE：输出其所在的代码行
+FILE：输出源代码命令名
+//pr_debug()与pr_info()定义
+#ifdef DEBUG
+#define pr_debug(fmt,arg...) \
+    printk(KERN_DEBUG fmt,##arg)
+#else
+static inline int __attribute__ ((format (printf,1,2))) pr_debug(cost char * fmt, ...)
+{
+    return 0;
+}
+#endif
+
+#define pr_infor(fmt,arg ...) \
+    printk(KERN_INFO fmt, ##arg)
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+//例6:
+#define pr_fmt(fmt) "NMI watchdog: " fmt
+
+#include <linux/mm.h>
+#include <linux/cpu.h>
+#include <linux/nmi.h>
+...
+//例7：
+printk(KERN_ERR "Assertion failed! %s,%s,%s,line=%d", #expr, __FILE__, __func__, LINE);
+1
+2
+3
+4
+5
+6
+7
+8
+9
+21.2.2 DEBUG_LL和EARLY_PRINTK
+
+DEBUG_LL对应内核的Kernel low-level debugging功能，EARLY_PRINTK对应内核中一个早起的控制台 
+为了在内核的drivers/serial下的控制台驱动初始化之前支持打印，可以选择上述两个配置项，另外需要在bootargs中设置earlyprintk的选项
+21.2.3 使用“/proc”
+
+“/proc”是一个虚拟文件系统，通过它可以在Linux内核空间和用户控件之间进行通信 
+在“/proc”文件系统中，可以将对虚拟文件的读写作为与内核中实体进行通信的一种手段，这些虚拟文件的内容都是动态的
+“/proc”下的绝大多数文件是只读的，以显示内核信息为主，也不都是只读，如修改/proc/sys/kernel/printk以改变printk()的打印级别
+Linux系统的许多命令本身都是通过分析”/proc”下的文件来完成的，如ps、top等，例如，free命令通过分析/proc/meminfo文件的到可用内存信息
+21.2.4 Oops
+
+内核出现类似用户空间的Segmentation Fault时，Oops会被打印到控制台和写入内核log缓冲区 
+反汇编一个目标文件：arm-linux-gnueabihf-objdump -d -s xxx.o
+21.2.5 BUG_ON()和WARN_ON()
+
+内核中许多地方调用类似BUG()的语句，它非常像一个内核运行时的断言，以为这本来不该执行到BUG()这条语句，一旦执行到即跑出Oops 
+BUG()语句定义如下： 
+panic()定义在kernel/panic.c中，会导致内核崩溃，并打开Oops
+#define BUG()  do { \
+    printk("BUG: failure at %s:%d/%s()!\n", __FILE__, __LINE__, __func__"); \
+    panic("BUG!");
+}while(0)
+1
+2
+3
+4
+BUG_ON()：时BUG()的变体，只有当括号内的条件成立的时候，才抛出Oops
+WARN_ON()：在括号里的条件成立的时候，内核会抛出栈回溯，但是不会panic()，这通常用于内核抛出一个警告，暗示某种不太合理的事情发生了
+21.2.8 strace
+
+strace是个有效的跟踪工具，它的主要特点是可以被用来监视系统调用 
+既可以调试一个新开始的程序，也可以调试一个已经在运行的程序（这意味着把strace绑定到一个已有的PID上）
+
