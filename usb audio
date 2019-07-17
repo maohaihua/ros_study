@@ -1,0 +1,145 @@
+http://wiki.t-firefly.com/ROC-RK3308-CC/driver.html
+
+https://gitlab.com/T-Firefly
+
+http://www.t-firefly.com/doc/download/55.html
+
+https://www.usb.org/defined-class-codes
+
+https://wenku.baidu.com/view/f99f59051ed9ad51f11df208.html
+
+https://wenku.baidu.com/view/ab2f183883c4bb4cf7ecd188.html?rec_flag=default
+
+https://blog.csdn.net/huntershuai/article/details/79732248
+
+https://blog.csdn.net/terry_linux/article/details/5422312
+
+https://blog.csdn.net/u013140088/article/details/17398679
+
+https://blog.csdn.net/Z_HUALIN/article/details/80732036
+
+https://blog.csdn.net/baiyibin0530/article/details/80403306
+
+
+
+
+对USB audio 上位机Mute设备协议的解析
+2018年05月22日 11:38:21 baiyibin0530 阅读数 164
+ 版权声明：本文为博主原创文章，未经博主允许不得转载。 https://blog.csdn.net/baiyibin0530/article/details/80403306
+21 01 00 01 02 02 01 00
+
+01
+
+21：type
+
+01: req
+
+00 01 :  value (00 channel 01 contrl)
+
+02 02 : index (first02 interface 02 unit)
+
+
+
+A.17.7 Feature Unit Control Selectors
+Table A-23: Feature Unit Control Selectors
+Control Selector
+Value
+FU_CONTROL_UNDEFINED
+0x00
+FU_MUTE_CONTROL
+0x01
+FU_VOLUME_CONTROL
+0x02
+FU_BASS_CONTROL
+0x03
+FU_MID_CONTROL
+0x04
+FU_TREBLE_CONTROL
+0x05
+FU_GRAPHIC_EQUALIZER_CONTROL
+0x06
+FU_AUTOMATIC_GAIN_CONTROL
+0x07
+FU_DELAY_CONTROL
+0x08
+FU_BASS_BOOST_CONTROL
+0x09
+FU_LOUDNESS_CONTROL
+0x0A
+FU_INPUT_GAIN_CONTROL
+0x0B
+FU_INPUT_GAIN_PAD_CONTROL
+0x0C
+FU_PHASE_INVERTER_CONTROL
+0x0D
+FU_UNDERFLOW_CONTROL
+0x0E
+USB Device Class Definition for Audio Devices
+Release 2.0
+May 31, 2006 138
+Control Selector Value
+FU_OVERFLOW_CONTROL
+0x0F
+FU_LATENCY_CONTROL
+0x10
+
+
+
+
+
+
+长话简说，第一，先说一下USB音频设备的硬件系统组成，列表如下：
+
+Audio codec，音频编解码芯片
+
+USB chip or IP，USB device控制芯片
+
+MCU or ARM，CPU用来对Audio codec, USB device controller, DMA进行配置，比起USB Video device项目, CPU需要起到增加12字节的header到数据包前面的作用，音频方面CPU不需要参与．
+
+DMA controller，用来USB ISO in/out EP buffer与Audio coded所使用的Memory间的数据搬运，如果系统中他们使用同一块memory地址，可以省略该DMA．
+
+
+
+第二，软件
+
+由于这个项目的根本目的是验证自开发的USB3.0 IP的ISO IN/OUT传输功能，所以，应该首先使用USB General functional driver与上层读写应用程序对ISO传输进行验证．
+
+USB设备这边，需要编写firmware,功能就是接收ISO OUT／BULK OUT数据，通过ISO IN/BULK IN回传给PC，PC对发送与接收的数据进行比较．
+
+其中的组合如下：BULK OUT＋ISO IN，用来验证ISO IN，　ISO OUT+BULK IN，用来验证ISO OUT，　最后ISO OUT/ISO IN用来验证两者间是否存在IP设计上的冲突问题．
+
+我所走的弯路就是，跳过了这一步，结果在USB IP产生问题的时候，由于无法证明到底是USB IP的问题，还是fimware的问题，而且对USB AUDIO DRIVER控制度也不如自己开发的USB GENERAL FUNCTIONAL DRIVER灵活度高，结果造成时间上的浪费．最终，还是回过头来，实现USB loopback device, 将问题的排查范围缩小直至定位．
+
+这一步对于选择现成USB DEVICE CONTROLLER　CHIP的方案，可以跳过．
+
+
+
+Windows驱动是现成的，所以，只要USB设备实现上不存在问题，Windows就能枚举，工作．驱动的名称为USBAudio.sys.
+
+设备实现上需要做的工作包括以下几个方面：
+
+WM8753的配置
+
+DMA数据传输的配置
+
+USB音频框架的搭建，包括：
+
+1. 选择一种适合的USB音频设备拓扑结构（后面会再提及相关文档）
+
+2. 编码选定拓扑结构下的USB标准描述符与USB音频设备类描述符
+
+3. 实现USB标准设备请求与USB音频设备类相关请求，这一点也与所选择的拓扑结构关联度很大，简而言之，选择的拓扑结构简单，所需要实现的音频类请求也简单，反之亦然．
+
+4. 实现ISO数据传输. 这一点必须考虑与DMA的同步配合，否则，就会出现数据上溢或者下溢的情况，这将会表现在音效上．
+
+
+
+还有就是GraphEdit
+
+在Windows上开发音视频的得力助手，通过Audio renderer与Advanced可以得到许多音频相关的统计数据．
+--------------------- 
+作者：笃行笔记 
+来源：CSDN 
+原文：https://blog.csdn.net/u013140088/article/details/17398679 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
